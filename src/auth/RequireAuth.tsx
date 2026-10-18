@@ -8,7 +8,7 @@ import { useAuth } from './useAuth'
 
 // UX guard: protected content renders only for a revalidated session. The backend still checks every request.
 export function RequireAuth({ children }: { children?: ReactNode }) {
-  const { status, error, retry, retrying, signOut } = useAuth()
+  const { status, error, retry, retrying, signOut, signedOut } = useAuth()
   const location = useLocation()
 
   if (status === 'loading') return <PageLoader fullScreen label="Checking your session…" />
@@ -26,7 +26,8 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
 
   if (status === 'unauthenticated') {
     const from = location.pathname + location.search + location.hash
-    const to = from === paths.home ? paths.login : `${paths.login}?redirect=${encodeURIComponent(from)}`
+    // A deliberate sign-out isn't an interruption, so there's nothing to return to.
+    const to = signedOut || from === paths.home ? paths.login : `${paths.login}?redirect=${encodeURIComponent(from)}`
     return <Navigate to={to} replace />
   }
 

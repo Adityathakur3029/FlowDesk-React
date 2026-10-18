@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { googleLogout } from '@react-oauth/google'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router'
 import { onUnauthorized } from '@/api/authEvents'
 import { isApiError } from '@/api/errors'
-import { paths } from '@/routes/paths'
 import { authKeys, fetchMe } from './api'
 import { AuthContext, type AuthState, type AuthStatus } from './authContext'
 import { clearSession, readSession, setSession } from './tokenStorage'
@@ -15,12 +13,12 @@ const MAX_TIMEOUT_MS = 2_147_483_647
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
 
   const [initial] = useState(readSession)
   const [hasSession, setHasSession] = useState(initial.state === 'valid')
   const [expiresAt, setExpiresAt] = useState(initial.state === 'valid' ? initial.expiresAt : null)
   const [sessionExpired, setSessionExpired] = useState(initial.state === 'expired')
+  const [signedOut, setSignedOut] = useState(false)
   const hasSessionRef = useRef(hasSession)
 
   // Revalidate a stored token and get the current role. The employee is never read from storage.
@@ -39,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear()
       setHasSession(false)
       setExpiresAt(null)
+      setSignedOut(!expired)
       // A stray 401 while already signed out shouldn't announce an expired session.
       if (!expired) setSessionExpired(false)
       else if (hadSession) setSessionExpired(true)
@@ -66,16 +65,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasSession(true)
       setExpiresAt(sessionExpiresAt)
       setSessionExpired(false)
+      setSignedOut(false)
     },
     [queryClient],
   )
 
+  // The backend has no logout endpoint: forgetting the token is the whole sign-out. RequireAuth then
+  // sends the user to /login. Navigating here as well would race it: React Router runs navigate() as a
+  // transition, so RequireAuth renders first with the old location and adds ?redirect=.
   const signOut = useCallback(() => {
-    // The backend has no logout endpoint: forgetting the token is the whole sign-out.
     endSession(false)
     googleLogout()
-    navigate(paths.login, { replace: true })
-  }, [endSession, navigate])
+  }, [endSession])
 
   const { refetch } = me
   const retry = useCallback(() => {
@@ -95,11 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error: status === 'error' ? me.error : null,
       retrying: me.isFetching,
       sessionExpired,
+      signedOut,
       signIn,
       signOut,
       retry,
     }),
-    [status, me.data, me.error, me.isFetching, sessionExpired, signIn, signOut, retry],
+    [status, me.data, me.error, me.isFetching, sessionExpired, signedOut, signIn, signOut, retry],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

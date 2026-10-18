@@ -12,6 +12,8 @@ export interface AuthState {
   retrying: boolean
   // True after the session ran out or a 401; cleared by the next sign-in or sign-out.
   sessionExpired: boolean
+  // True after signOut(); cleared by the next sign-in. RequireAuth then redirects to /login without ?redirect=.
+  signedOut: boolean
   signIn(result: LoginResult): void
   signOut(): void
   retry(): void

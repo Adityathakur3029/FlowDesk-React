@@ -162,7 +162,7 @@ interface AuthState {
 | `signIn(result)` | `setSession({ accessToken, expiresIn })`; `queryClient.setQueryData(authKeys.me(), result.employee)`; `hasSession = true`; `sessionExpired = false`. No extra `/auth/me` call, since the login response's employee is current. |
 | `onUnauthorized` (any 401 except `/auth/google`; subscribed in an effect, unsubscribed on unmount) | `endSession({ expired: true })` |
 | expiry timer | While `authenticated`, a `setTimeout` fires at `expiresAt` (delay clamped to `[0, 2_147_483_647]`) → `endSession({ expired: true })`. Re-armed whenever a new session starts. |
-| `signOut()` | `endSession({ expired: false })`; `googleLogout()` (stops GIS auto-select so the next sign-in shows the account chooser); `navigate(paths.login, { replace: true })` |
+| `signOut()` | `endSession({ expired: false })`; `googleLogout()` (stops GIS auto-select so the next sign-in shows the account chooser). **Changed in spec 04:** no `navigate`; `signedOut = true` and `RequireAuth` redirects to a bare `/login` |
 | `endSession({ expired })` | `clearSession()`; `queryClient.clear()`; `hasSession = false`; `sessionExpired = expired && hadSession` (a stray 401 while already signed out doesn't show the message) |
 
 The provider sits **inside** `<BrowserRouter>` (it needs `useNavigate` for `signOut`) and inside `QueryClientProvider`. The 401/expiry paths don't navigate themselves: `RequireAuth` reacts to `unauthenticated` and redirects with the current location, so there's one redirect rule.

@@ -66,10 +66,12 @@ src/
   components/
     ui/                shadcn components (added with `npx shadcn add <name>`)
     brand/             SaajhaLogo (public/logo.png)
-    layout/            AppShell, Sidebar, Header, UserMenu
-    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState
+    layout/            AppShell, AppSidebar, Header, UserMenu, PageHeader, navItems.ts (sidebar entries + roles)
+    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary
+  hooks/               shadcn hooks (use-mobile.ts)
   features/
     <feature>/         e.g. invites, employees, teams, programs, tasks, comments
+      index.ts         public entry: the only file other features may import from
       api.ts           service functions, query keys, useQuery/useMutation hooks
       components/
       pages/
@@ -77,13 +79,15 @@ src/
   lib/
     utils.ts           cn() etc.
     queryClient.ts
+    formErrors.ts      applyServerErrors(): 400 details → form fields, rest → form-level alert
+    roles.ts           ROLE_LABELS (display only)
   routes/
     router.tsx         route tree, public vs protected
     paths.ts           route path constants
   main.tsx, App.tsx
 ```
 
-Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiClient` (`src/api/client.ts`) → backend.** Components never call `fetch` or `apiClient` directly, and features don't import each other's internals; shared code moves to `components/`, `lib/` or `api/`.
+Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiClient` (`src/api/client.ts`) → backend.** Components never call `fetch` or `apiClient` directly, and features don't import each other's internals: a feature may expose an `index.ts`, and other features import only from it (`@/features/invites`, never `@/features/invites/components/…`). Shared code moves to `components/`, `lib/` or `api/`.
 
 ## 1. Backend API contract
 
@@ -171,7 +175,8 @@ Keep this table in sync with the contract when the backend changes.
 
 - Use shadcn/ui components from `src/components/ui`; add new ones with `npx shadcn add <name>` instead of hand-rolling. Style with Tailwind utilities and `cn()`.
 - Reuse `components/feedback/*` for loading, empty, error, forbidden and not-found states, and sonner toasts for mutation results.
-- `AppShell` holds the sidebar navigation, header, user menu (name, role, logout) and an `<Outlet />`. Nav items declare the roles they're shown to.
+- `AppShell` holds the sidebar navigation, header, user menu (name, role, logout) and an `<Outlet />`. Nav items declare the roles they're shown to. A new section is one entry in `components/layout/navItems.ts` plus its route; the sidebar itself doesn't change.
+- Every page starts with `<PageHeader title description? actions?>`, which also sets the document title.
 - Forms: react-hook-form + zod resolver. The zod schema mirrors the contract's documented constraints (lengths, enums, required fields) for instant feedback only; server `details` always win.
 - Accessibility: label every input, make buttons real `<button>`s, keep keyboard focus visible.
 

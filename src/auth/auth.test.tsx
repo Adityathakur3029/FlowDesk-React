@@ -6,7 +6,6 @@ import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes, useLocation, type Location } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { env } from '@/config/env'
-import { HomePage } from '@/routes/HomePage'
 import { AppRoutes } from '@/routes/router'
 import { server } from '@/test/server'
 import { AuthProvider } from './AuthProvider'
@@ -80,7 +79,7 @@ const renderGuarded = (path: string) =>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<p>Home page</p>} />
         <Route path="/teams" element={<p>Teams page</p>} />
         <Route element={<RequireRole roles={['ADMIN']} />}>
           <Route path="/admin" element={<p>Admin page</p>} />
@@ -92,7 +91,7 @@ const renderGuarded = (path: string) =>
 const currentUrl = () => `${location.current?.pathname}${location.current?.search}`
 
 beforeEach(() => {
-  server.use(http.get(api('/health-check'), () => HttpResponse.json({ status: 'ok', dbTime: '2026-10-18T10:00:00.000Z' })))
+  server.use(http.get(api('/employees'), () => HttpResponse.json({ data: [employee], meta: { total: 1, limit: 20, offset: 0 } })))
 })
 
 afterEach(() => {
@@ -125,8 +124,8 @@ describe('RequireAuth', () => {
 
     renderApp('/')
     expect(screen.getByRole('status')).toHaveTextContent('Checking your session…')
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
-    expect(screen.getByText('MANAGER')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
+    expect(await screen.findByText('jane.doe@saajha.org')).toBeInTheDocument()
     expect(authorization).toBe('Bearer stored-token')
   })
 
@@ -171,7 +170,7 @@ describe('RequireAuth', () => {
 
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
   })
 
   it('ends the session when the token expires', async () => {
@@ -179,7 +178,7 @@ describe('RequireAuth', () => {
     setSession({ accessToken: 'short-lived', expiresIn: 0.3 })
 
     renderApp('/')
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
     expect(await screen.findByText('Your session has expired. Sign in again.', {}, { timeout: 2000 })).toBeInTheDocument()
     expect(localStorage.getItem(SESSION_KEY)).toBeNull()
   })
@@ -198,10 +197,10 @@ describe('LoginPage', () => {
     renderApp('/login')
     await userEvent.click(await screen.findByRole('button', { name: 'Mock Google' }))
 
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
     expect(body).toEqual({ idToken: 'google-id-token' })
     expect(JSON.parse(localStorage.getItem(SESSION_KEY)!).accessToken).toBe('flowdesk-token')
-    expect(currentUrl()).toBe('/')
+    expect(currentUrl()).toBe('/people')
   })
 
   it('returns to the ?redirect= path after sign-in', async () => {
@@ -215,8 +214,8 @@ describe('LoginPage', () => {
     server.use(http.post(api('/auth/google'), () => HttpResponse.json(loginResponse)))
     renderApp('/login?redirect=%2F%2Fevil.com')
     await userEvent.click(await screen.findByRole('button', { name: 'Mock Google' }))
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
-    expect(currentUrl()).toBe('/')
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
+    expect(currentUrl()).toBe('/people')
   })
 
   it.each([
@@ -252,15 +251,15 @@ describe('LoginPage', () => {
     expect(await screen.findByText('Signing you in…')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mock Google' })).not.toBeInTheDocument()
     release()
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
   })
 
   it('redirects a signed-in user away from /login', async () => {
     server.use(http.get(api('/auth/me'), () => HttpResponse.json({ data: employee })))
     setSession({ accessToken: 'stored-token', expiresIn: 3600 })
     renderApp('/login')
-    expect(await screen.findByText('Welcome, Jane Doe')).toBeInTheDocument()
-    expect(currentUrl()).toBe('/')
+    expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
+    expect(currentUrl()).toBe('/people')
   })
 })
 
@@ -270,7 +269,8 @@ describe('signOut', () => {
     setSession({ accessToken: 'stored-token', expiresIn: 3600 })
 
     const { queryClient } = renderApp('/')
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Account menu for Jane Doe' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
 
     expect(await screen.findByRole('button', { name: 'Mock Google' })).toBeInTheDocument()
     expect(currentUrl()).toBe('/login')

@@ -6,7 +6,6 @@ import { AppRoutes } from '@/routes/router'
 function App() {
   return (
     <BrowserRouter>
-      {/* Inside the router: signOut navigates to /login. */}
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
