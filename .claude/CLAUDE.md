@@ -67,8 +67,9 @@ src/
     ui/                shadcn components (added with `npx shadcn add <name>`)
     brand/             SaajhaLogo (public/logo.png)
     layout/            AppShell, AppSidebar, Header, UserMenu, PageHeader, navItems.ts (sidebar entries + roles)
-    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary
-  hooks/               shadcn hooks (use-mobile.ts)
+    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary, FormErrorAlert
+    data/              Pagination (shared by list pages)
+  hooks/               shared hooks: shadcn's use-mobile.ts, useDebouncedValue.ts
   features/
     <feature>/         e.g. invites, employees, teams, programs, tasks, comments
       index.ts         public entry: the only file other features may import from
@@ -88,6 +89,8 @@ src/
 ```
 
 Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiClient` (`src/api/client.ts`) → backend.** Components never call `fetch` or `apiClient` directly, and features don't import each other's internals: a feature may expose an `index.ts`, and other features import only from it (`@/features/invites`, never `@/features/invites/components/…`). Shared code moves to `components/`, `lib/` or `api/`.
+
+Features that import each other (`employees` ↔ `teams`) must not form a cycle: an `index.ts` never exports pages or anything that imports the other feature's `index.ts`. The router imports pages by path (`@/features/teams/pages/TeamsPage`).
 
 ## 1. Backend API contract
 
@@ -159,6 +162,7 @@ Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiCl
 |---|---|---|---|
 | Invite member (`POST /invites`) | ✓ | ✓ | ✗ |
 | Create employee directly (`POST /employees`) | ✓ | ✗ | ✗ |
+| Update employee name / role / active (`PATCH /employees/{id}`); not your own role or status (`SELF_LOCKOUT`), not the last admin (`LAST_ADMIN`) | ✓ | ✗ | ✗ |
 | Create / update team, add / remove team members | ✓ | ✓ | ✗ |
 | Delete team | ✓ | ✗ | ✗ |
 | Create / update program | ✓ | ✓ | ✗ |
@@ -198,10 +202,14 @@ Keep this table in sync with the contract when the backend changes.
 6. **Member management**: employee list/detail (filters `role`, `teamId`, `includeInactive`, pagination), team membership.
 7. Then: teams → programs → tasks (dependencies, labels) → comments (replies, @mentions).
 
-## Known contract facts and gaps (audited 2026-10-17)
+## Known contract facts and gaps (audited 2026-10-17, updated 2026-10-18)
 
 Facts:
-- 36 operations across Health, Auth, Employees, Invites, Teams, Programs, Tasks and Comments. Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
+- 37 operations across Health, Auth, Employees, Invites, Teams, Programs, Tasks and Comments (`PATCH /employees/{id}` added 2026-10-18). Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
+- `GET /employees?q=` searches name or email (case-insensitive substring) and then orders by match quality instead of newest first. Use it for every people picker (team members, assignees, @mentions).
+- `PATCH /employees/{id}` finds inactive employees too (reactivation), but `GET /employees/{id}` returns 404 for them. Team changes go through `PUT`/`DELETE /teams/{teamId}/members/{employeeId}`, never the PATCH. `PUT` moves an employee out of any other team and needs an active employee.
+- Deactivating an employee ends their sessions (next request 401) and drops them from team member lists and `memberCount`, but they keep `teamId`. Roles are read from the DB on every request.
+- `POST /teams` creates an empty team; members are added one `PUT` each, so creating a team with members isn't atomic.
 - Org email domain is exactly `saajha.org` (subdomains rejected) for both invites and Google sign-in.
 - An invite is valid for 72 hours. Re-inviting the same email revokes the previous pending invite. The token is only sent by email and never returned by the API.
 - `POST /invites/accept` only creates the employee. The user then signs in with Google separately. Error codes: `INVALID_INVITE_TOKEN`, `INVITE_REVOKED` (400), `INVITE_ALREADY_ACCEPTED`, `EMPLOYEE_EXISTS` (409), and **410** for an expired invite.
@@ -210,9 +218,10 @@ Facts:
 
 Gaps (report them and don't work around them; ask the backend before building the UI):
 1. **No invite listing / revoke / resend** (`GET /invites` etc. don't exist). "Invitation management" today means only create + accept.
-2. **No endpoint to change an employee's role or deactivate them.** "Member management" today means list/view employees + team membership.
+2. ~~No endpoint to change an employee's role or deactivate them.~~ Closed 2026-10-18: `PATCH /employees/{id}`.
 3. **No logout, token revocation or refresh endpoint.** Logout is client-side, and users sign in again after `expiresIn` (8 h).
-4. The `POST /employees` 409 response has no documented `code` (probably `EMPLOYEE_EXISTS`). Confirm before relying on it.
+4. ~~The `POST /employees` 409 response has no documented `code`.~~ Closed 2026-10-18: it's `EMPLOYEE_EXISTS`.
+5. **`Employee` has only `teamId`, no team name.** The frontend loads every team (`useTeamDirectory`) to show names. A `team: { id, name } | null` summary would remove that.
 
 ## Definition of done (per feature)
 

@@ -76,8 +76,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List employees
-         * @description Returns employees newest first (`createdAt` descending), one page at a time. Deactivated employees are excluded unless `includeInactive=true`.
+         * List and search employees
+         * @description Returns employees one page at a time. Deactivated employees are excluded unless `includeInactive=true`. All filters (`q`, `role`, `teamId`, `includeInactive`) combine with AND, and `meta.total` counts the matching rows.
+         *
+         *     **Search (`q`):** trimmed, then matched as a case-insensitive substring of `name` **or** `emailId`. `%`, `_` and `\` match literally. There's no accent folding or fuzzy matching. Built for type-ahead pickers, e.g. `?q=jan&limit=10`.
+         *
+         *     **Order:**
+         *     - without `q`: newest first (`createdAt` descending), as before
+         *     - with `q`: by match quality, then by name ignoring case, then by `id`. Match quality, best first: (1) name or email equal to `q`; (2) name starting with `q`, a word in the name (after a space) starting with `q`, or email starting with `q`; (3) any other match. For `q=jan`: `Jan`, then `Ana Janssen` and `Janet King`, then `Benjamin Ojanen`.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -86,6 +92,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Search text, trimmed, 1-100 characters. Case-insensitive substring match on `name` or `emailId`; `%`, `_` and `\` match literally. Changes the order (see the operation description). */
+                    q?: string;
                     /** @description Only return employees with this role */
                     role?: "ADMIN" | "MANAGER" | "MEMBER";
                     /** @description Only return members of this team (UUID), or `none` for employees not in any team. An unknown or deleted team simply matches nobody. */
@@ -125,7 +133,7 @@ export interface paths {
                          *       ],
                          *       "meta": {
                          *         "total": 1,
-                         *         "limit": 20,
+                         *         "limit": 10,
                          *         "offset": 0
                          *       }
                          *     }
@@ -133,23 +141,12 @@ export interface paths {
                         "application/json": components["schemas"]["EmployeeListResponse"];
                     };
                 };
-                /** @description Invalid query parameter: unknown `role`, `teamId` not a UUID or `none`, a non-boolean `includeInactive`, `limit` outside 1-100, or a negative `offset` */
+                /** @description Invalid query parameter: `q` empty after trimming or longer than 100 characters, unknown `role`, `teamId` not a UUID or `none`, a non-boolean `includeInactive`, `limit` outside 1-100, or a negative `offset` */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        /**
-                         * @example {
-                         *       "error": "Validation failed",
-                         *       "details": [
-                         *         {
-                         *           "path": "limit",
-                         *           "message": "Too big: expected number to be <=100"
-                         *         }
-                         *       ]
-                         *     }
-                         */
                         "application/json": components["schemas"]["ValidationErrorResponse"];
                     };
                 };
@@ -243,7 +240,7 @@ export interface paths {
                 };
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
-                /** @description An employee with this email already exists */
+                /** @description `EMPLOYEE_EXISTS`: an employee with this email already exists (including deactivated employees) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -251,7 +248,8 @@ export interface paths {
                     content: {
                         /**
                          * @example {
-                         *       "error": "Employee with email jane.doe@saajha.org already exists"
+                         *       "error": "Employee with email jane.doe@saajha.org already exists",
+                         *       "code": "EMPLOYEE_EXISTS"
                          *     }
                          */
                         "application/json": components["schemas"]["ErrorResponse"];
@@ -275,7 +273,7 @@ export interface paths {
         };
         /**
          * Get an employee by id
-         * @description Returns one active employee. A deactivated employee returns 404.
+         * @description Returns one active employee. A deactivated employee returns 404: read them with `GET /employees?includeInactive=true`, and reactivate them with `PATCH /employees/{id}`.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -359,7 +357,108 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update an employee
+         * @description Changes an employee's `name`, `role` and/or `isActive`. At least one field is required; unknown fields are rejected. `email` can't be changed (it's bound to the Google account), and teams change through `PUT` / `DELETE /teams/{teamId}/members/{employeeId}`, so `teamId` is rejected too. Inactive employees are found as well, so `{ "isActive": true }` reactivates one.
+         *
+         *     **Rules, in order:**
+         *     1. No employee, active or not, has this `id` → 404.
+         *     2. You can't deactivate yourself or change your own role → 409 `SELF_LOCKOUT`. Renaming yourself is allowed.
+         *     3. The change would leave no active ADMIN → 409 `LAST_ADMIN`. Concurrent demotions are serialised, so two admins demoting each other at the same moment can't both succeed.
+         *     4. Idempotent: if every sent field already has that value, nothing is written (`updatedAt` doesn't change) and the employee is returned with 200.
+         *
+         *     **Deactivating** (`isActive: false`): the employee's existing access tokens stop working on their next request (401 `INVALID_AUTH_TOKEN`), and signing in again gives 403 `ACCOUNT_INACTIVE`. They keep their `teamId` but leave the team's member list and `memberCount`; reactivating them puts them back. Their tasks keep them as assignee or reporter, and their comments and mentions stay. They can't be newly assigned (`ASSIGNEE_NOT_FOUND`) or mentioned (`MENTION_NOT_FOUND`).
+         *
+         *     **Changing a role:** roles are read from the database on every request, not from the token, so the new role applies to the employee's next request (including `GET /auth/me`) without signing in again.
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** ADMIN only; other roles get 403 `FORBIDDEN`.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Employee id (UUID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "name": "Jane Smith",
+                     *       "role": "ADMIN"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UpdateEmployeeRequest"];
+                };
+            };
+            responses: {
+                /** @description The employee after the update (unchanged if nothing differed) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *         "createdAt": "2026-10-15T14:13:43.757Z",
+                         *         "updatedAt": "2026-10-18T10:00:00.000Z",
+                         *         "isActive": true,
+                         *         "emailId": "jane.doe@saajha.org",
+                         *         "name": "Jane Smith",
+                         *         "role": "ADMIN",
+                         *         "teamId": null
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["EmployeeResponse"];
+                    };
+                };
+                /** @description Invalid `id`, an empty body, an unknown field (such as `email` or `teamId`), a `null`, or a field breaking its rule: `name` 1-150 characters after trimming, `role` one of ADMIN, MANAGER or MEMBER, `isActive` a JSON boolean. Also returned for a body that isn't valid JSON (`Malformed JSON body`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                /** @description No employee, active or inactive, has this id */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Employee not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `SELF_LOCKOUT`: you tried to deactivate yourself or change your own role. `LAST_ADMIN`: the change would demote or deactivate the last active ADMIN. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
         trace?: never;
     };
     "/auth/google": {
@@ -3663,7 +3762,7 @@ export interface components {
             /** @description Human-readable error message */
             error: string;
             /**
-             * @description Machine-readable error code, present on errors that have one: INVALID_INVITE_TOKEN, INVITE_REVOKED, INVITE_ALREADY_ACCEPTED, INVITE_PENDING, INVITE_EXPIRED, EMPLOYEE_EXISTS, EMAIL_DELIVERY_FAILED, AUTH_REQUIRED, INVALID_AUTH_TOKEN, FORBIDDEN, INVALID_GOOGLE_TOKEN, GOOGLE_EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, NOT_INVITED, ACCOUNT_INACTIVE, GOOGLE_ACCOUNT_MISMATCH, GOOGLE_UNAVAILABLE, PROGRAM_KEY_EXISTS, ASSIGNEE_NOT_FOUND, INVALID_DATE_RANGE, TASK_BLOCKED, TASK_DONE, DEPENDENCY_TASK_NOT_FOUND, DEPENDENCY_OTHER_PROGRAM, SELF_DEPENDENCY, DEPENDENCY_EXISTS, DEPENDENCY_LIMIT_REACHED, DEPENDENCY_CYCLE, PARENT_COMMENT_NOT_FOUND, PARENT_TARGET_MISMATCH, NESTED_REPLY, TOO_MANY_MENTIONS, MENTION_NOT_FOUND, TEAM_NAME_EXISTS, TEAM_OWNS_PROGRAMS, OWNER_TEAM_NOT_FOUND
+             * @description Machine-readable error code, present on errors that have one: INVALID_INVITE_TOKEN, INVITE_REVOKED, INVITE_ALREADY_ACCEPTED, INVITE_PENDING, INVITE_EXPIRED, EMPLOYEE_EXISTS, EMAIL_DELIVERY_FAILED, AUTH_REQUIRED, INVALID_AUTH_TOKEN, FORBIDDEN, INVALID_GOOGLE_TOKEN, GOOGLE_EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, NOT_INVITED, ACCOUNT_INACTIVE, GOOGLE_ACCOUNT_MISMATCH, GOOGLE_UNAVAILABLE, PROGRAM_KEY_EXISTS, ASSIGNEE_NOT_FOUND, INVALID_DATE_RANGE, TASK_BLOCKED, TASK_DONE, DEPENDENCY_TASK_NOT_FOUND, DEPENDENCY_OTHER_PROGRAM, SELF_DEPENDENCY, DEPENDENCY_EXISTS, DEPENDENCY_LIMIT_REACHED, DEPENDENCY_CYCLE, PARENT_COMMENT_NOT_FOUND, PARENT_TARGET_MISMATCH, NESTED_REPLY, TOO_MANY_MENTIONS, MENTION_NOT_FOUND, TEAM_NAME_EXISTS, TEAM_OWNS_PROGRAMS, OWNER_TEAM_NOT_FOUND, SELF_LOCKOUT, LAST_ADMIN
              * @example INVITE_EXPIRED
              */
             code?: string;
@@ -4320,6 +4419,20 @@ export interface components {
          * @enum {string}
          */
         EmployeeRole: "ADMIN" | "MANAGER" | "MEMBER";
+        /** @description Send at least one field. Unknown fields are rejected, including `email` and `teamId`. */
+        UpdateEmployeeRequest: {
+            /**
+             * @description Full name; trimmed; 1-150 characters
+             * @example Jane Doe
+             */
+            name?: string;
+            role?: components["schemas"]["EmployeeRole"];
+            /**
+             * @description false deactivates the employee, true reactivates them
+             * @example false
+             */
+            isActive?: boolean;
+        };
         GoogleLoginRequest: {
             /**
              * @description Google ID token (a JWT) from Google Identity Services: the `credential` field of the Sign in with Google callback

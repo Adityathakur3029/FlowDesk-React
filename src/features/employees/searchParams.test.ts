@@ -20,6 +20,23 @@ describe('parseEmployeeSearch', () => {
   )
 })
 
+describe('parseEmployeeSearch teamId', () => {
+  it.each([
+    ['teamId=none', 'none'],
+    ['teamId=3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23', '3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23'],
+    ['teamId=abc', undefined],
+    ['teamId=', undefined],
+  ])('%s → %s', (query, teamId) => {
+    expect(parse(query).teamId).toBe(teamId)
+  })
+
+  it('round-trips into the URL and the API params', () => {
+    const search = parse('teamId=none&offset=20')
+    expect(toEmployeeSearchParams(search).toString()).toBe('teamId=none&offset=20')
+    expect(toEmployeeListParams(search)).toEqual({ teamId: 'none', limit: 20, offset: 20 })
+  })
+})
+
 describe('toEmployeeSearchParams', () => {
   it('leaves defaults out of the URL', () => {
     expect(toEmployeeSearchParams({ includeInactive: false, offset: 0 }).toString()).toBe('')

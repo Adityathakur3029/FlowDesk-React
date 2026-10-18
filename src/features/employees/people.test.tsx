@@ -118,6 +118,27 @@ describe('PeoplePage', () => {
     expect(await screen.findByText('jane.doe@saajha.org')).toBeInTheDocument()
   })
 
+  it('filters by team through the URL', async () => {
+    const research = {
+      id: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+      createdAt: '2026-10-17T09:00:00.000Z',
+      updatedAt: '2026-10-17T09:00:00.000Z',
+      isActive: true,
+      name: 'Research',
+      description: null,
+      memberCount: 0,
+    }
+    server.use(http.get(api('/teams'), () => HttpResponse.json({ data: [research], meta: { total: 1, limit: 100, offset: 0 } })))
+    const queries = mockEmployees(() => page([janeDoe], { total: 25, offset: 20 }))
+    renderSignedIn('/people?teamId=none&offset=20')
+    await screen.findByText('jane.doe@saajha.org')
+    expect(queries[0]).toBe('teamId=none&limit=20&offset=20')
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Team' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Research' }))
+    expect(currentUrl()).toBe(`/people?teamId=${research.id}`)
+  })
+
   it.each([
     ['MEMBER', false],
     ['MANAGER', true],

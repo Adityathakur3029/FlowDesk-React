@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircle, Loader2, Mail, UserPlus } from 'lucide-react'
+import { Loader2, Mail, UserPlus } from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { getErrorMessage, hasErrorCode } from '@/api/errors'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -88,22 +88,7 @@ export function InviteMemberDialog() {
         </DialogHeader>
 
         <form id="invite-member-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
-          {formErrors.length > 0 && (
-            <Alert variant="destructive">
-              <AlertCircle aria-hidden="true" />
-              <AlertDescription>
-                {formErrors.length === 1 ? (
-                  formErrors[0]
-                ) : (
-                  <ul className="list-disc pl-4">
-                    {formErrors.map((message) => (
-                      <li key={message}>{message}</li>
-                    ))}
-                  </ul>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+          <FormErrorAlert errors={formErrors} />
 
           <FieldGroup>
             <Controller

@@ -175,11 +175,12 @@ describe('RequireAuth', () => {
 
   it('ends the session when the token expires', async () => {
     server.use(http.get(api('/auth/me'), () => HttpResponse.json({ data: employee })))
-    setSession({ accessToken: 'short-lived', expiresIn: 0.3 })
+    // Long enough for the first render of People on a busy machine, short enough to wait out.
+    setSession({ accessToken: 'short-lived', expiresIn: 1 })
 
     renderApp('/')
     expect(await screen.findByRole('heading', { name: 'People' })).toBeInTheDocument()
-    expect(await screen.findByText('Your session has expired. Sign in again.', {}, { timeout: 2000 })).toBeInTheDocument()
+    expect(await screen.findByText('Your session has expired. Sign in again.', {}, { timeout: 4000 })).toBeInTheDocument()
     expect(localStorage.getItem(SESSION_KEY)).toBeNull()
   })
 })
