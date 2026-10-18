@@ -1,4 +1,4 @@
-// Storage for the FlowDesk access token. Login itself lives in the auth feature (spec 03).
+// Storage for the FlowDesk access token. Session state lives in AuthProvider.
 // Every localStorage access is guarded: blocked storage behaves as "no session". Never log tokens.
 
 const SESSION_KEY = 'flowdesk.session'
@@ -19,13 +19,15 @@ function isStoredSession(value: unknown): value is StoredSession {
 }
 
 // `expiresIn` is in seconds, as returned by POST /auth/google (LoginResponse.data.expiresIn).
-export function setSession({ accessToken, expiresIn }: { accessToken: string; expiresIn: number }): void {
+// Returns the computed expiresAt (epoch ms).
+export function setSession({ accessToken, expiresIn }: { accessToken: string; expiresIn: number }): number {
   const session: StoredSession = { accessToken, expiresAt: Date.now() + expiresIn * 1000 }
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session))
   } catch {
     // Storage unavailable: the session lasts only until the next 401.
   }
+  return session.expiresAt
 }
 
 export function clearSession(): void {
@@ -36,15 +38,21 @@ export function clearSession(): void {
   }
 }
 
-// Returns the token, or null (clearing the key) when it's missing, corrupt or expired.
-export function getAccessToken(): string | null {
+export type SessionRead =
+  | { state: 'none' }
+  | { state: 'expired' }
+  | { state: 'valid'; accessToken: string; expiresAt: number }
+
+// 'none': nothing usable stored (missing, corrupt, or storage blocked). 'expired': there was a
+// session but its expiresAt has passed; the key is cleared. Lets the caller tell the two apart.
+export function readSession(): SessionRead {
   let raw: string | null
   try {
     raw = localStorage.getItem(SESSION_KEY)
   } catch {
-    return null
+    return { state: 'none' }
   }
-  if (raw === null) return null
+  if (raw === null) return { state: 'none' }
 
   let session: unknown
   try {
@@ -53,9 +61,19 @@ export function getAccessToken(): string | null {
     session = null
   }
 
-  if (!isStoredSession(session) || session.expiresAt <= Date.now()) {
+  if (!isStoredSession(session)) {
     clearSession()
-    return null
+    return { state: 'none' }
   }
-  return session.accessToken
+  if (session.expiresAt <= Date.now()) {
+    clearSession()
+    return { state: 'expired' }
+  }
+  return { state: 'valid', accessToken: session.accessToken, expiresAt: session.expiresAt }
+}
+
+// Returns the token, or null (clearing the key) when it is missing, corrupt or expired.
+export function getAccessToken(): string | null {
+  const session = readSession()
+  return session.state === 'valid' ? session.accessToken : null
 }

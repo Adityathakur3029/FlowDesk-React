@@ -54,13 +54,18 @@ src/
     env.ts             typed, validated env
   auth/
     AuthProvider.tsx   session state (employee, token, status), login/logout
-    useAuth.ts
+    authContext.ts     AuthContext + AuthState type
+    useAuth.ts         useAuth(), useHasRole(roles)
+    api.ts             authKeys, fetchMe, useSignInWithGoogle (the only apiClient calls in auth/)
+    types.ts           Employee / Role / LoginResult aliases of generated types
     tokenStorage.ts    localStorage read/write/clear for token + expiry
+    redirect.ts        safeRedirect() for ?redirect= (blocks off-site redirects)
     RequireAuth.tsx    route guard: signed in?
     RequireRole.tsx    route/UI guard: role allowed? (UX only)
     LoginPage.tsx
   components/
     ui/                shadcn components (added with `npx shadcn add <name>`)
+    brand/             SaajhaLogo (public/logo.png)
     layout/            AppShell, Sidebar, Header, UserMenu
     feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState
   features/
