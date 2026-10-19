@@ -224,7 +224,9 @@ Gaps (report them and don't work around them; ask the backend before building th
 3. **No logout, token revocation or refresh endpoint.** Logout is client-side, and users sign in again after `expiresIn` (8 h).
 4. ~~The `POST /employees` 409 response has no documented `code`.~~ Closed 2026-10-18: it's `EMPLOYEE_EXISTS`.
 5. **`Employee` has only `teamId`, and `Program` only `ownerTeamId`, no team name.** The frontend loads every team (`useTeamDirectory`) to show names. A `team: { id, name } | null` / `ownerTeam` summary would remove that.
-6. **`Comment.author` / `CommentReply.author` generate as non-nullable** (`allOf` + `nullable` in OpenAPI 3.0), but they're `null` on a tombstone. Check `isActive` before reading `author`. Backend fix: `nullable: true` next to the `allOf`, not inside it.
+6. **`Comment.author` / `CommentReply.author` and `Task.assignee` generate as non-nullable** (`allOf` + `nullable` in OpenAPI 3.0), but they're `null` on a tombstone / when unassigned. Check `isActive` before reading `author`, and check `assignee` for null. Backend fix: `nullable: true` next to the `allOf`, not inside it.
+
+Tooling note: `openapi-typescript` marks request fields that have a `default` as required (`CreateTaskRequest.labels`, `dependsOn`, …). Send the contract default explicitly rather than casting.
 
 ## Definition of done (per feature)
 

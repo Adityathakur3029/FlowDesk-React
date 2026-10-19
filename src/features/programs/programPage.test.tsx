@@ -35,20 +35,26 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 const timestampFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
 function mockProgram(respond: () => Response | Program) {
-  const calls = { count: 0 }
+  const calls = { tasks: [] as string[], comments: 0 }
   server.use(
     http.get(api('/programs/:programId'), () => {
-      calls.count += 1
       const result = respond()
       return result instanceof Response ? result : HttpResponse.json({ data: result })
     }),
     http.get(api('/teams'), () => HttpResponse.json({ data: [research], meta: { total: 1, limit: 100, offset: 0 } })),
-    http.get(api('/programs/:programId/comments'), () =>
-      HttpResponse.json({ data: [], meta: { total: 0, limit: 20, offset: 0 } }),
-    ),
+    http.get(api('/programs/:programId/tasks'), ({ request }) => {
+      calls.tasks.push(new URL(request.url).search.slice(1))
+      return HttpResponse.json({ data: [], meta: { total: 0, limit: 20, offset: 0 } })
+    }),
+    http.get(api('/programs/:programId/comments'), () => {
+      calls.comments += 1
+      return HttpResponse.json({ data: [], meta: { total: 0, limit: 20, offset: 0 } })
+    }),
   )
   return calls
 }
+
+const tab = (name: string) => within(screen.getByRole('tablist', { name: 'Program sections' })).getByRole('tab', { name })
 
 const details = () => within(screen.getByRole('complementary', { name: 'Program details' }))
 
@@ -58,8 +64,8 @@ function detail(label: string) {
 }
 
 describe('ProgramPage', () => {
-  it('shows the program, its details, comments and the analytics placeholder', async () => {
-    mockProgram(() => marketing)
+  it('shows the program, its details, the Tasks tab and the analytics placeholder', async () => {
+    const calls = mockProgram(() => marketing)
     renderSignedIn(`/programs/${marketing.id}`)
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Marketing Research' })).toBeInTheDocument()
@@ -75,14 +81,44 @@ describe('ProgramPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Analytics & reports' })).toBeInTheDocument()
     expect(screen.getByText('Coming soon')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Comments' })).toBeInTheDocument()
-    expect(await screen.findByText('No comments yet')).toBeInTheDocument()
+
+    // Tasks is the default tab; comments only load once their tab is opened.
+    expect(tab('Tasks')).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByText('No tasks yet')).toBeInTheDocument()
+    expect(calls.tasks).toEqual(['limit=20&offset=0'])
+    expect(calls.comments).toBe(0)
+    expect(screen.queryByRole('heading', { name: 'Comments' })).not.toBeInTheDocument()
 
     // The sidebar keeps Programs active on a program's page.
     expect(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'Programs' })).toHaveAttribute(
       'aria-current',
       'page',
     )
+  })
+
+  it('opens the Comments tab and keeps the task filters in the URL', async () => {
+    const calls = mockProgram(() => marketing)
+    renderSignedIn(`/programs/${marketing.id}?status=DONE`)
+    await screen.findByText('No tasks match these filters')
+
+    await userEvent.click(tab('Comments'))
+    expect(await screen.findByText('No comments yet')).toBeInTheDocument()
+    expect(tab('Comments')).toHaveAttribute('aria-selected', 'true')
+    expect(calls.comments).toBe(1)
+    expect(currentUrl()).toBe(`/programs/${marketing.id}?status=DONE&tab=comments`)
+
+    await userEvent.click(tab('Tasks'))
+    expect(await screen.findByText('No tasks match these filters')).toBeInTheDocument()
+    expect(currentUrl()).toBe(`/programs/${marketing.id}?status=DONE`)
+  })
+
+  it('opens on the Comments tab from ?tab=comments', async () => {
+    const calls = mockProgram(() => marketing)
+    renderSignedIn(`/programs/${marketing.id}?tab=comments`)
+
+    expect(await screen.findByText('No comments yet')).toBeInTheDocument()
+    expect(tab('Comments')).toHaveAttribute('aria-selected', 'true')
+    expect(calls.tasks).toEqual([])
   })
 
   it('shows "Not set" and "No description." for empty fields', async () => {

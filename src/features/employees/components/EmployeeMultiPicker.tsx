@@ -22,6 +22,8 @@ interface EmployeeMultiPickerProps {
   placeholder?: string
   // Team name for a suggestion's "In {team}" hint; the picker doesn't load teams itself.
   teamName?: (teamId: string) => string | undefined
+  // Most people that can be picked, e.g. 1 for an assignee. Once reached, the search input is hidden.
+  max?: number
   'aria-describedby'?: string
 }
 
@@ -35,27 +37,37 @@ export function EmployeeMultiPicker({
   invalid = false,
   placeholder = 'Search by name or email',
   teamName,
+  max = Infinity,
   'aria-describedby': describedBy,
 }: EmployeeMultiPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const q = useDebouncedValue(text.trim(), SEARCH_DEBOUNCE_MS)
   const search = useEmployeeSearch(q)
 
-  const open = focused && !disabled && text.trim() !== ''
+  const full = value.length >= max
+  const open = focused && !disabled && !full && text.trim() !== ''
   const pickedIds = new Set(value.map((employee) => employee.id))
   const suggestions = (search.data?.data ?? []).filter((e) => !pickedIds.has(e.id)).slice(0, MAX_SUGGESTIONS)
 
   function pick(employee: Employee) {
     onChange([...value, employee])
     setText('')
-    inputRef.current?.focus()
+    if (value.length + 1 < max) {
+      inputRef.current?.focus()
+    } else {
+      // The input goes away once the picker is full, so keep focus in the box on the new chip's remove button.
+      requestAnimationFrame(() => boxRef.current?.querySelector<HTMLButtonElement>('li:last-child button')?.focus())
+    }
   }
 
   function remove(id: string) {
     onChange(value.filter((employee) => employee.id !== id))
-    inputRef.current?.focus()
+    // When the picker was full, the input isn't rendered yet; it comes back on the next render.
+    if (inputRef.current) inputRef.current.focus()
+    else requestAnimationFrame(() => inputRef.current?.focus())
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -82,6 +94,7 @@ export function EmployeeMultiPicker({
     >
       {/* Clicking anywhere in the box focuses the input, like a single text field. */}
       <div
+        ref={boxRef}
         onClick={() => inputRef.current?.focus()}
         className={cn(
           'flex max-h-32 min-h-8 w-full flex-wrap items-center gap-1.5 overflow-y-auto rounded-lg border border-input px-1.5 py-1 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30',
@@ -114,19 +127,21 @@ export function EmployeeMultiPicker({
             ))}
           </ul>
         )}
-        <CommandPrimitive.Input
-          ref={inputRef}
-          value={text}
-          onValueChange={setText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          maxLength={MAX_QUERY_LENGTH}
-          disabled={disabled}
-          placeholder={value.length === 0 ? placeholder : undefined}
-          aria-invalid={invalid || undefined}
-          aria-describedby={describedBy}
-          className="h-6 min-w-32 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm"
-        />
+        {!full && (
+          <CommandPrimitive.Input
+            ref={inputRef}
+            value={text}
+            onValueChange={setText}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            maxLength={MAX_QUERY_LENGTH}
+            disabled={disabled}
+            placeholder={value.length === 0 ? placeholder : undefined}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+            className="h-6 min-w-32 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm"
+          />
+        )}
       </div>
 
       {open && (

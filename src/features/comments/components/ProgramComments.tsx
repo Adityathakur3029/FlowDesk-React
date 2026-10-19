@@ -14,7 +14,8 @@ export function ProgramComments({ programId }: { programId: string }) {
 
   return (
     <section aria-labelledby="program-comments-heading" className="flex flex-col gap-4">
-      <h2 id="program-comments-heading" className="text-lg font-semibold">
+      {/* The program page's Comments tab is the visible heading. */}
+      <h2 id="program-comments-heading" className="sr-only">
         Comments
       </h2>
       <CommentForm programId={programId} />

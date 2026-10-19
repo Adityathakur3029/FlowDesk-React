@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { ArrowLeft, ChartColumn } from 'lucide-react'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { isApiError } from '@/api/errors'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { NotFoundState } from '@/components/feedback/NotFoundState'
@@ -9,16 +9,22 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProgramComments } from '@/features/comments'
+import { ProgramTasks } from '@/features/tasks'
 import { useTeamDirectory } from '@/features/teams'
+import { formatCalendarDate } from '@/lib/dates'
 import { paths } from '@/routes/paths'
 import { useProgram } from '../api'
 import { OwnerTeamName } from '../components/OwnerTeamName'
 import { ProgramStatusBadge } from '../components/ProgramStatusBadge'
-import { formatProgramDate } from '../programDates'
 import type { Program } from '../types'
 
 const timestampFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+
+// ?tab=comments selects Comments; anything else is Tasks, the default.
+type ProgramTab = 'tasks' | 'comments'
+const COMMENTS_TAB = 'comments'
 
 export function ProgramPage() {
   const { programId = '' } = useParams()
@@ -52,6 +58,17 @@ function BackToPrograms() {
 
 function ProgramView({ program }: { program: Program }) {
   const directory = useTeamDirectory()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab: ProgramTab = searchParams.get('tab') === COMMENTS_TAB ? 'comments' : 'tasks'
+  // Only ?tab changes, so the Tasks tab's search, status and page survive a visit to Comments.
+  // It pushes a history entry, so Back returns to the previous tab.
+  const changeTab = (next: string) =>
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === COMMENTS_TAB) params.set('tab', COMMENTS_TAB)
+      else params.delete('tab')
+      return params
+    })
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,8 +97,8 @@ function ProgramView({ program }: { program: Program }) {
                 <Detail label="Owner team">
                   <OwnerTeamName teamId={program.ownerTeamId} teams={directory.data} loading={directory.isPending} />
                 </Detail>
-                <Detail label="Start date">{program.startDate ? formatProgramDate(program.startDate) : <NotSet />}</Detail>
-                <Detail label="End date">{program.endDate ? formatProgramDate(program.endDate) : <NotSet />}</Detail>
+                <Detail label="Start date">{program.startDate ? formatCalendarDate(program.startDate) : <NotSet />}</Detail>
+                <Detail label="End date">{program.endDate ? formatCalendarDate(program.endDate) : <NotSet />}</Detail>
                 <Detail label="Created">{timestampFormat.format(new Date(program.createdAt))}</Detail>
                 <Detail label="Updated">{timestampFormat.format(new Date(program.updatedAt))}</Detail>
               </dl>
@@ -116,7 +133,19 @@ function ProgramView({ program }: { program: Program }) {
             )}
           </section>
 
-          <ProgramComments programId={program.id} />
+          {/* Radix mounts only the active tab, so comments load when that tab is first opened. */}
+          <Tabs value={tab} onValueChange={changeTab}>
+            <TabsList aria-label="Program sections">
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="comments">Comments</TabsTrigger>
+            </TabsList>
+            <TabsContent value="tasks" className="pt-2">
+              <ProgramTasks programId={program.id} programName={program.name} />
+            </TabsContent>
+            <TabsContent value="comments" className="pt-2">
+              <ProgramComments programId={program.id} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
