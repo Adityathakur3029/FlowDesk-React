@@ -26,8 +26,8 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 }
 
-// The first full-app render in each file can take over a second while all files run in parallel.
-configure({ asyncUtilTimeout: 3000 })
+// The first full-app render in each file can take a few seconds while all files run in parallel.
+configure({ asyncUtilTimeout: 5000 })
 
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 

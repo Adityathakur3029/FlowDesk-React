@@ -14,5 +14,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Dialog tests that type into several fields take 3-5 s while every file runs in parallel.
+    testTimeout: 15_000,
   },
 })

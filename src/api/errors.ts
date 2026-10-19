@@ -72,7 +72,8 @@ export const ERROR_MESSAGES: Record<KnownErrorCode, string | null> = {
   ACCOUNT_INACTIVE: 'Your FlowDesk account has been deactivated.',
   GOOGLE_ACCOUNT_MISMATCH: 'This FlowDesk account is linked to a different Google account.',
   GOOGLE_UNAVAILABLE: 'Google sign-in is temporarily unavailable. Try again shortly.',
-  PROGRAM_KEY_EXISTS: 'A program with this key already exists.',
+  // Deleted programs aren't listed but keep their key, so say why a key that isn't in the list is taken.
+  PROGRAM_KEY_EXISTS: 'Another program already uses this key. Keys of deleted programs stay taken too, so pick a different one.',
   OWNER_TEAM_NOT_FOUND: "The owner team doesn't exist or has been deleted.",
   ASSIGNEE_NOT_FOUND: "The assignee doesn't exist or is inactive.",
   INVALID_DATE_RANGE: 'The due date must be on or after the start date.',

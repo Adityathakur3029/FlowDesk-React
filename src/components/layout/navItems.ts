@@ -1,4 +1,4 @@
-import { Users, UsersRound, type LucideIcon } from 'lucide-react'
+import { FolderKanban, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import type { Role } from '@/auth/types'
 import { paths } from '@/routes/paths'
 
@@ -12,6 +12,7 @@ export interface NavItem {
 
 // Add a section by appending here; AppSidebar needs no change.
 export const navItems: NavItem[] = [
+  { label: 'Programs', to: paths.programs, icon: FolderKanban },
   { label: 'People', to: paths.people, icon: Users },
   { label: 'Teams', to: paths.teams, icon: UsersRound },
 ]

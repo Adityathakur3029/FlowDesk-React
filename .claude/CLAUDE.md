@@ -202,7 +202,7 @@ Keep this table in sync with the contract when the backend changes.
 6. **Member management**: employee list/detail (filters `role`, `teamId`, `includeInactive`, pagination), team membership.
 7. Then: teams → programs → tasks (dependencies, labels) → comments (replies, @mentions).
 
-## Known contract facts and gaps (audited 2026-10-17, updated 2026-10-18)
+## Known contract facts and gaps (audited 2026-10-17, updated 2026-10-19)
 
 Facts:
 - 37 operations across Health, Auth, Employees, Invites, Teams, Programs, Tasks and Comments (`PATCH /employees/{id}` added 2026-10-18). Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
@@ -215,13 +215,16 @@ Facts:
 - `POST /invites/accept` only creates the employee. The user then signs in with Google separately. Error codes: `INVALID_INVITE_TOKEN`, `INVITE_REVOKED` (400), `INVITE_ALREADY_ACCEPTED`, `EMPLOYEE_EXISTS` (409), and **410** for an expired invite.
 - An employee created via `POST /employees` (no invite) **can't sign in** (`NOT_INVITED`), so prefer invites in the UI.
 - Tasks are addressed by `taskRef` (id or key such as `MKT-3`).
+- Programs have optional `startDate` / `endDate` (added 2026-10-19): calendar dates `YYYY-MM-DD`, null when unset, past dates allowed. End before start → 400 `INVALID_DATE_RANGE` (on `PATCH` the merged values are checked). Format them in UTC, or they show a day early west of UTC.
+- Comment bodies are Markdown with mention tokens `@[Name](mention:<uuid>)`; render them escaped (no `dangerouslySetInnerHTML`) and show mentions with the current name from `mentions`. Program comment lists page **threads** (`meta.total` counts threads), each with all its replies.
 
 Gaps (report them and don't work around them; ask the backend before building the UI):
 1. **No invite listing / revoke / resend** (`GET /invites` etc. don't exist). "Invitation management" today means only create + accept.
 2. ~~No endpoint to change an employee's role or deactivate them.~~ Closed 2026-10-18: `PATCH /employees/{id}`.
 3. **No logout, token revocation or refresh endpoint.** Logout is client-side, and users sign in again after `expiresIn` (8 h).
 4. ~~The `POST /employees` 409 response has no documented `code`.~~ Closed 2026-10-18: it's `EMPLOYEE_EXISTS`.
-5. **`Employee` has only `teamId`, no team name.** The frontend loads every team (`useTeamDirectory`) to show names. A `team: { id, name } | null` summary would remove that.
+5. **`Employee` has only `teamId`, and `Program` only `ownerTeamId`, no team name.** The frontend loads every team (`useTeamDirectory`) to show names. A `team: { id, name } | null` / `ownerTeam` summary would remove that.
+6. **`Comment.author` / `CommentReply.author` generate as non-nullable** (`allOf` + `nullable` in OpenAPI 3.0), but they're `null` on a tombstone. Check `isActive` before reading `author`. Backend fix: `nullable: true` next to the `allOf`, not inside it.
 
 ## Definition of done (per feature)
 

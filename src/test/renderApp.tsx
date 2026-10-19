@@ -38,12 +38,14 @@ export const currentUrl = () => `${location.current?.pathname}${location.current
 
 interface RenderSignedInOptions {
   role?: Role
+  // Other fields of the signed-in employee, e.g. their teamId.
+  me?: Partial<Employee>
   routes?: ReactNode
 }
 
 // Renders the app with a stored token and /auth/me answering as Jane Doe with the given role.
-export function renderSignedIn(path: string, { role = 'MANAGER', routes = <AppRoutes /> }: RenderSignedInOptions = {}) {
-  server.use(http.get(api('/auth/me'), () => HttpResponse.json({ data: { ...janeDoe, role } })))
+export function renderSignedIn(path: string, { role = 'MANAGER', me, routes = <AppRoutes /> }: RenderSignedInOptions = {}) {
+  server.use(http.get(api('/auth/me'), () => HttpResponse.json({ data: { ...janeDoe, ...me, role } })))
   setSession({ accessToken: 'stored-token', expiresIn: 3600 })
   // Same defaults as the app, minus retries so error cases settle immediately.
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })

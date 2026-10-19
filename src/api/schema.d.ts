@@ -1661,6 +1661,8 @@ export interface paths {
                          *           "name": "Marketing Research",
                          *           "description": "Q4 market research for the new product line",
                          *           "status": "ACTIVE",
+                         *           "startDate": "2026-10-01",
+                         *           "endDate": "2026-12-31",
                          *           "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *         }
                          *       ],
@@ -1705,6 +1707,8 @@ export interface paths {
          *
          *     `ownerTeamId` is required: every program has exactly one owner team, which must be an active team (see `GET /teams`). The owner team is informational for now and doesn't restrict who can work on the program.
          *
+         *     `startDate` and `endDate` are optional `YYYY-MM-DD` dates (omit or send null to leave them unset). `endDate` must be on or after `startDate` when both are set (400 `INVALID_DATE_RANGE`); past dates are allowed.
+         *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
@@ -1726,6 +1730,8 @@ export interface paths {
                      *       "name": "Marketing Research",
                      *       "description": "Q4 market research for the new product line",
                      *       "status": "ACTIVE",
+                     *       "startDate": "2026-10-01",
+                     *       "endDate": "2026-12-31",
                      *       "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                      *     }
                      */
@@ -1750,6 +1756,8 @@ export interface paths {
                          *         "name": "Marketing Research",
                          *         "description": "Q4 market research for the new product line",
                          *         "status": "ACTIVE",
+                         *         "startDate": "2026-10-01",
+                         *         "endDate": "2026-12-31",
                          *         "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *       }
                          *     }
@@ -1757,7 +1765,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProgramResponse"];
                     };
                 };
-                /** @description The body breaks a validation rule (`ownerTeamId` a required UUID, `key` 2-10 letters or digits starting with a letter, `name` 1-150 characters, `description` at most 10,000 characters, `status` a ProgramStatus), or `OWNER_TEAM_NOT_FOUND`: `ownerTeamId` isn't an active team. */
+                /** @description The body breaks a validation rule (`ownerTeamId` a required UUID, `key` 2-10 letters or digits starting with a letter, `name` 1-150 characters, `description` at most 10,000 characters, `status` a ProgramStatus, `startDate`/`endDate` YYYY-MM-DD or null), `INVALID_DATE_RANGE`: `endDate` is before `startDate`, or `OWNER_TEAM_NOT_FOUND`: `ownerTeamId` isn't an active team. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1836,6 +1844,8 @@ export interface paths {
                          *         "name": "Marketing Research",
                          *         "description": "Q4 market research for the new product line",
                          *         "status": "ACTIVE",
+                         *         "startDate": "2026-10-01",
+                         *         "endDate": "2026-12-31",
                          *         "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *       }
                          *     }
@@ -1953,7 +1963,7 @@ export interface paths {
         head?: never;
         /**
          * Update a program
-         * @description Updates any of `name`, `description` (null clears it), `status` and `ownerTeamId` (moves ownership to another active team; it can't be null). At least one field is required. `key` is immutable: sending it returns 400. Any status can move to any other.
+         * @description Updates any of `name`, `description` (null clears it), `status`, `startDate` and `endDate` (null clears either), and `ownerTeamId` (moves ownership to another active team; it can't be null). At least one field is required. The date range is checked on the **merged** values: for example, sending only an `endDate` before the program's existing `startDate` returns 400 `INVALID_DATE_RANGE`. `key` is immutable: sending it returns 400. Any status can move to any other.
          *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
@@ -1975,7 +1985,8 @@ export interface paths {
                 content: {
                     /**
                      * @example {
-                     *       "status": "ON_HOLD"
+                     *       "status": "ON_HOLD",
+                     *       "endDate": "2027-01-31"
                      *     }
                      */
                     "application/json": components["schemas"]["UpdateProgramRequest"];
@@ -1999,6 +2010,8 @@ export interface paths {
                          *         "name": "Marketing Research",
                          *         "description": "Q4 market research for the new product line",
                          *         "status": "ON_HOLD",
+                         *         "startDate": "2026-10-01",
+                         *         "endDate": "2027-01-31",
                          *         "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *       }
                          *     }
@@ -2006,7 +2019,7 @@ export interface paths {
                         "application/json": components["schemas"]["ProgramResponse"];
                     };
                 };
-                /** @description Invalid `programId`, an empty body, a field breaking its rule, an attempt to change `key` or clear `ownerTeamId`, or `OWNER_TEAM_NOT_FOUND`: `ownerTeamId` isn't an active team. */
+                /** @description Invalid `programId`, an empty body, a field breaking its rule, an attempt to change `key` or clear `ownerTeamId`, `INVALID_DATE_RANGE`: the merged `endDate` is before the merged `startDate`, or `OWNER_TEAM_NOT_FOUND`: `ownerTeamId` isn't an active team. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4015,6 +4028,8 @@ export interface components {
          *       "name": "Marketing Research",
          *       "description": "Q4 market research for the new product line",
          *       "status": "ACTIVE",
+         *       "startDate": "2026-10-01",
+         *       "endDate": "2026-12-31",
          *       "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
          *     }
          */
@@ -4032,6 +4047,16 @@ export interface components {
             name: string;
             description: string | null;
             status: components["schemas"]["ProgramStatus"];
+            /**
+             * Format: date
+             * @description Planned start (YYYY-MM-DD); null when not set
+             */
+            startDate: string | null;
+            /**
+             * Format: date
+             * @description Planned end (YYYY-MM-DD), on or after startDate; null when not set
+             */
+            endDate: string | null;
             /**
              * Format: uuid
              * @description Id of the team that owns the program. Always set on programs created through the API; null only on programs created before teams existed.
@@ -4520,6 +4545,18 @@ export interface components {
              * @enum {string}
              */
             status: "PLANNED" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "CANCELLED";
+            /**
+             * Format: date
+             * @description Planned start, YYYY-MM-DD, or null. Past dates are allowed.
+             * @example 2026-10-01
+             */
+            startDate?: string | null;
+            /**
+             * Format: date
+             * @description Planned end, YYYY-MM-DD, or null. Must be on or after startDate. Past dates are allowed.
+             * @example 2026-12-31
+             */
+            endDate?: string | null;
         };
         /** @description Send at least one field. `key` is immutable and is rejected; unknown fields are rejected too. */
         UpdateProgramRequest: {
@@ -4534,6 +4571,18 @@ export interface components {
              */
             description?: string | null;
             status?: components["schemas"]["ProgramStatus"];
+            /**
+             * Format: date
+             * @description Planned start, YYYY-MM-DD, or null. Past dates are allowed.
+             * @example 2026-10-01
+             */
+            startDate?: string | null;
+            /**
+             * Format: date
+             * @description Planned end, YYYY-MM-DD, or null. Must be on or after startDate. Past dates are allowed.
+             * @example 2026-12-31
+             */
+            endDate?: string | null;
             /**
              * Format: uuid
              * @description Move ownership to another active team. Can't be null: a program always has an owner team.
