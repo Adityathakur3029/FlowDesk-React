@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { getErrorMessage, hasErrorCode } from '@/api/errors'
 import { useAuth } from '@/auth/useAuth'
 import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
+import { ToneDot } from '@/components/data/ToneBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,16 +25,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { EmployeeMultiPicker } from '@/features/employees'
 import { applyServerErrors } from '@/lib/formErrors'
 import { useCreateTask } from '../api'
-import {
-  CREATABLE_TASK_STATUSES,
-  TASK_PRIORITIES,
-  TASK_PRIORITY_LABELS,
-  TASK_STATUS_LABELS,
-  TASK_TYPES,
-  TASK_TYPE_LABELS,
-} from '../taskDisplay'
+import { CREATABLE_TASK_STATUSES, TASK_PRIORITIES, TASK_STATUS_LABELS, TASK_STATUS_TONES, TASK_TYPES } from '../taskDisplay'
 import { hoursToMinutes, parseLabels, taskFieldAliases, taskFields, taskSchema, type TaskFormValues } from '../taskSchema'
 import type { CreateTaskRequest } from '../types'
+import { TaskPriorityLabel } from './TaskPriorityLabel'
+import { TaskTypeLabel } from './TaskTypeLabel'
 
 // The contract's defaults, shown in the selects so what the user sees is what's stored.
 const DEFAULT_VALUES: TaskFormValues = {
@@ -192,7 +188,7 @@ export function CreateTaskDialog({ programId, programName, onCreated }: CreateTa
                       <SelectContent>
                         {TASK_TYPES.map((type) => (
                           <SelectItem key={type} value={type}>
-                            {TASK_TYPE_LABELS[type]}
+                            <TaskTypeLabel type={type} />
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -214,6 +210,7 @@ export function CreateTaskDialog({ programId, programName, onCreated }: CreateTa
                       <SelectContent>
                         {CREATABLE_TASK_STATUSES.map((status) => (
                           <SelectItem key={status} value={status}>
+                            <ToneDot tone={TASK_STATUS_TONES[status]} />
                             {TASK_STATUS_LABELS[status]}
                           </SelectItem>
                         ))}
@@ -236,7 +233,7 @@ export function CreateTaskDialog({ programId, programName, onCreated }: CreateTa
                       <SelectContent>
                         {TASK_PRIORITIES.map((priority) => (
                           <SelectItem key={priority} value={priority}>
-                            {TASK_PRIORITY_LABELS[priority]}
+                            <TaskPriorityLabel priority={priority} />
                           </SelectItem>
                         ))}
                       </SelectContent>

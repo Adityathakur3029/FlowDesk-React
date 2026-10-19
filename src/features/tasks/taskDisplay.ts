@@ -1,6 +1,5 @@
-import type { ComponentProps } from 'react'
-import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Equal, type LucideIcon } from 'lucide-react'
-import type { Badge } from '@/components/ui/badge'
+import { Bug, ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, CircleAlert, ClipboardList, Equal, Flag, SquareCheck, type LucideIcon } from 'lucide-react'
+import type { Tone } from '@/lib/tones'
 import type { CreatableTaskStatus, TaskPriority, TaskStatus, TaskType } from './types'
 
 // Display only. Every list keeps the contract's enum order, which is also the order in the selects.
@@ -18,14 +17,13 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   DEPENDENT: 'Dependent',
 }
 
-type BadgeVariant = NonNullable<ComponentProps<typeof Badge>['variant']>
-
-export const TASK_STATUS_VARIANTS: Record<TaskStatus, BadgeVariant> = {
-  DISCUSSION: 'outline',
-  ON_HOLD: 'secondary',
-  IN_PROGRESS: 'default',
-  DONE: 'secondary',
-  DEPENDENT: 'destructive',
+// Same meaning as the program statuses' colours (lib/tones.ts); DEPENDENT is blocked, so red.
+export const TASK_STATUS_TONES: Record<TaskStatus, Tone> = {
+  DISCUSSION: 'violet',
+  ON_HOLD: 'amber',
+  IN_PROGRESS: 'blue',
+  DONE: 'green',
+  DEPENDENT: 'red',
 }
 
 export const TASK_TYPES = ['PRE', 'TASK', 'POST', 'BUG', 'ISSUE'] as const satisfies readonly TaskType[]
@@ -36,6 +34,22 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   POST: 'Post',
   BUG: 'Bug',
   ISSUE: 'Issue',
+}
+
+export const TASK_TYPE_TONES: Record<TaskType, Tone> = {
+  PRE: 'sky',
+  TASK: 'blue',
+  POST: 'violet',
+  BUG: 'red',
+  ISSUE: 'orange',
+}
+
+export const TASK_TYPE_ICONS: Record<TaskType, LucideIcon> = {
+  PRE: ClipboardList,
+  TASK: SquareCheck,
+  POST: Flag,
+  BUG: Bug,
+  ISSUE: CircleAlert,
 }
 
 export const TASK_PRIORITIES = ['LOWEST', 'LOW', 'MEDIUM', 'HIGH', 'HIGHEST'] as const satisfies readonly TaskPriority[]
@@ -54,4 +68,13 @@ export const TASK_PRIORITY_ICONS: Record<TaskPriority, LucideIcon> = {
   MEDIUM: Equal,
   HIGH: ChevronUp,
   HIGHEST: ChevronsUp,
+}
+
+// Cool to hot, as in Jira.
+export const TASK_PRIORITY_TONES: Record<TaskPriority, Tone> = {
+  LOWEST: 'sky',
+  LOW: 'blue',
+  MEDIUM: 'amber',
+  HIGH: 'orange',
+  HIGHEST: 'red',
 }

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { Team } from '@/features/teams'
 import { api, currentUrl, renderSignedIn } from '@/test/renderApp'
 import { server } from '@/test/server'
-import type { Program } from './types'
+import type { Program, UpdateProgramRequest } from './types'
 
 // The contract's Team and Program examples.
 const research: Team = {
@@ -167,5 +167,165 @@ describe('ProgramPage', () => {
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Marketing Research' })).toBeInTheDocument()
+  })
+})
+
+// PATCH /programs/{programId}: answers with the program merged with the body, or a given error.
+function mockPatch(respond: (body: UpdateProgramRequest) => Response | Program = (body) => ({ ...marketing, ...body })) {
+  const bodies: UpdateProgramRequest[] = []
+  server.use(
+    http.patch(api('/programs/:programId'), async ({ request }) => {
+      const body = (await request.json()) as UpdateProgramRequest
+      bodies.push(body)
+      const result = respond(body)
+      return result instanceof Response ? result : HttpResponse.json({ data: result })
+    }),
+  )
+  return bodies
+}
+
+describe('ProgramPage editing', () => {
+  const openPage = async (role: 'ADMIN' | 'MANAGER' | 'MEMBER' = 'MANAGER') => {
+    renderSignedIn(`/programs/${marketing.id}`, { role })
+    await screen.findByRole('heading', { level: 1, name: 'Marketing Research' })
+  }
+
+  it('renames the program in place', async () => {
+    mockProgram(() => marketing)
+    const bodies = mockPatch()
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit name' }))
+    const input = screen.getByRole('textbox', { name: 'Name' })
+    expect(input).toHaveFocus()
+    expect(input).toHaveValue('Marketing Research')
+    await userEvent.clear(input)
+    await userEvent.type(input, '  Market Study {Enter}')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Market Study' })).toBeInTheDocument()
+    expect(bodies).toEqual([{ name: 'Market Study' }])
+    expect(await screen.findByText('Name updated')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit name' })).toHaveFocus())
+  })
+
+  it('closes without a request when nothing changed, and Escape discards changes', async () => {
+    mockProgram(() => marketing)
+    const bodies = mockPatch()
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit name' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Marketing Research' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit name' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), ' draft{Escape}')
+    expect(screen.getByRole('heading', { level: 1, name: 'Marketing Research' })).toBeInTheDocument()
+    expect(bodies).toEqual([])
+  })
+
+  it('changes the status from the badge menu', async () => {
+    mockProgram(() => marketing)
+    const bodies = mockPatch()
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Status: Active. Change status' }))
+    await userEvent.click(screen.getByRole('menuitemradio', { name: 'On hold' }))
+
+    expect(await screen.findByText('Status changed to On hold')).toBeInTheDocument()
+    expect(bodies).toEqual([{ status: 'ON_HOLD' }])
+    expect(screen.getByRole('button', { name: 'Status: On hold. Change status' })).toBeInTheDocument()
+  })
+
+  it('edits and clears the description', async () => {
+    mockProgram(() => marketing)
+    const bodies = mockPatch()
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    const box = screen.getByRole('textbox', { name: 'Description' })
+    expect(box).toHaveValue(marketing.description)
+    await userEvent.clear(box)
+    await userEvent.type(box, 'New scope{Control>}{Enter}{/Control}')
+    expect(await screen.findByText('New scope')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Description' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('No description.')).toBeInTheDocument()
+    expect(bodies).toEqual([{ description: 'New scope' }, { description: null }])
+    expect(screen.getByRole('button', { name: 'Add description' })).toBeInTheDocument()
+  })
+
+  it('changes and clears a date', async () => {
+    mockProgram(() => marketing)
+    const bodies = mockPatch()
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: `Edit start date, ${dateFormat.format(new Date('2026-10-01'))}` }))
+    const input = screen.getByLabelText('Start date')
+    await userEvent.clear(input)
+    await userEvent.type(input, '2026-10-15')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(detail('Start date')).toHaveTextContent(dateFormat.format(new Date('2026-10-15'))))
+
+    await userEvent.click(screen.getByRole('button', { name: /^Edit end date/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Clear date' }))
+    await waitFor(() => expect(detail('End date')).toHaveTextContent('Not set'))
+    expect(bodies).toEqual([{ startDate: '2026-10-15' }, { endDate: null }])
+  })
+
+  it('shows INVALID_DATE_RANGE under the end date and keeps the editor open', async () => {
+    mockProgram(() => marketing)
+    mockPatch(() => HttpResponse.json({ error: 'endDate must be on or after startDate', code: 'INVALID_DATE_RANGE' }, { status: 400 }))
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: /^Edit end date/ }))
+    const input = screen.getByLabelText('End date')
+    await userEvent.clear(input)
+    await userEvent.type(input, '2026-09-01')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('The end date must be on or after the start date.')).toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(input).toHaveFocus())
+  })
+
+  it('shows a 403 in the editor and keeps the text', async () => {
+    mockProgram(() => marketing)
+    mockPatch(() => HttpResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 }))
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit name' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), ' 2{Enter}')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("You don't have permission to do that.")
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Marketing Research 2')
+  })
+
+  it('shows the field error from a 400 validation response', async () => {
+    mockProgram(() => marketing)
+    mockPatch(() =>
+      HttpResponse.json({ error: 'Validation failed', details: [{ path: 'name', message: 'Too long from the server' }] }, { status: 400 }),
+    )
+    await openPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit name' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), ' 2{Enter}')
+
+    expect(await screen.findByText('Too long from the server')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it("doesn't offer editing to a MEMBER", async () => {
+    mockProgram(() => marketing)
+    await openPage('MEMBER')
+
+    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit name' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Change status/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument()
+    expect(within(detail('Start date')).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(detail('End date')).queryByRole('button')).not.toBeInTheDocument()
   })
 })

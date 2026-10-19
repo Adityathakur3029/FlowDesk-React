@@ -3,10 +3,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCalendarDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { TASK_TYPE_LABELS } from '../taskDisplay'
 import type { Task } from '../types'
 import { TaskPriorityLabel } from './TaskPriorityLabel'
 import { TaskStatusBadge } from './TaskStatusBadge'
+import { TaskTypeLabel } from './TaskTypeLabel'
 
 const SKELETON_ROWS = 5
 const COLUMNS = 7
@@ -75,7 +75,9 @@ export function TaskTable({ tasks, busy = false }: TaskTableProps) {
                       <TaskLabels labels={task.labels} />
                     </div>
                   </TableCell>
-                  <TableCell>{TASK_TYPE_LABELS[task.type]}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <TaskTypeLabel type={task.type} />
+                  </TableCell>
                   <TableCell>
                     <TaskStatusBadge status={task.status} />
                   </TableCell>

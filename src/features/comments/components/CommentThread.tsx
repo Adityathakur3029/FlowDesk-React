@@ -13,12 +13,18 @@ export function CommentThread({ programId, comment }: { programId: string; comme
   const canReply = comment.isActive && !replying
 
   return (
-    <li className="flex flex-col gap-3">
+    <li className="flex flex-col gap-3 rounded-xl border border-blue-100 bg-background p-4 shadow-xs dark:border-blue-900/60">
       <CommentItem
         comment={comment}
         actions={
           canReply && (
-            <Button type="button" variant="ghost" size="sm" className="-ml-2 h-7" onClick={() => setReplying(true)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="-ml-2 h-7 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-300 dark:hover:bg-blue-500/10"
+              onClick={() => setReplying(true)}
+            >
               <Reply aria-hidden="true" />
               Reply
             </Button>
@@ -27,7 +33,7 @@ export function CommentThread({ programId, comment }: { programId: string; comme
       />
       {(replies.length > 0 || replying) && (
         // Lines replies up with the parent's body: avatar (size-8) + gap-3.
-        <div className="ml-11 flex flex-col gap-3 border-l pl-4">
+        <div className="ml-11 flex flex-col gap-3 border-l-2 border-blue-200 pl-4 dark:border-blue-800">
           {replies.length > 0 && (
             <ul aria-label="Replies" className="flex flex-col gap-3">
               {replies.map((reply) => (

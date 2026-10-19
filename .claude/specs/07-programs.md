@@ -412,7 +412,7 @@ useCreateProgramComment(programId)   // useMutation<Comment, ApiError, CreateCom
 | 404 (program deleted meanwhile) | alert | server message |
 | 500 / network | alert | `getErrorMessage` |
 
-Comment edit and delete, and the @-mention picker, are Out of scope.
+Comment edit and delete are Out of scope. The @-mention picker is in [09-program-page-polish](./09-program-page-polish.md).
 
 ## Tests (Vitest + MSW + RTL)
 
@@ -537,8 +537,8 @@ Checked 2026-10-19 (first pass): `npm run api:types` output matched `src/api/sch
 
 - The program's tasks and labels on the program page (tasks spec), and `programs/index.ts` when tasks need `programKeys` or `ProgramStatusBadge`.
 - Analytics & reports content (no endpoint yet; the section is a "Coming soon" placeholder).
-- Comment edit (`PATCH`, author only) and delete (`DELETE`, ADMIN/MANAGER or author), the @-mention picker (`GET /employees?q=`), and Markdown rendering (needs a sanitising renderer, a new package: ask first).
-- Edit program (`PATCH /programs/{id}`: name, description, status, dates, move to another owner team). Moving ownership is also what unblocks deleting a team that owns programs (`TEAM_OWNS_PROGRAMS`).
+- Comment edit (`PATCH`, author only) and delete (`DELETE`, ADMIN/MANAGER or author), and Markdown rendering (needs a sanitising renderer, a new package: ask first).
+- Edit program: name, description, status and dates are in [09-program-page-polish](./09-program-page-polish.md); moving to another owner team (`PATCH { ownerTeamId }`) is still to do. Moving ownership is also what unblocks deleting a team that owns programs (`TEAM_OWNS_PROGRAMS`).
 - Delete program (`DELETE`, ADMIN only; the key stays taken, no restore).
 - Status and owner team filters and `q` search on the Programs page (`GET /programs` supports all three).
 - A team's programs on the Teams page (`GET /programs?ownerTeamId=`).

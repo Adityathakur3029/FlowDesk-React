@@ -121,6 +121,14 @@
     --sidebar-ring: var(--ring);
 }
 
+/* The comments section is blue (spec 09). Inside it, primary and ring are blue, so its buttons and focus
+   rings follow without per-component overrides. Blue 700 keeps white text above 4.5:1. */
+.theme-comments {
+    --primary: #1d4ed8;
+    --primary-foreground: #ffffff;
+    --ring: #2563eb;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

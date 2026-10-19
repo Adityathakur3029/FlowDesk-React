@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
+import { ToneDot } from '@/components/data/ToneBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { hasTaskFilters, type TaskSearch } from '../searchParams'
-import { TASK_STATUSES, TASK_STATUS_LABELS } from '../taskDisplay'
+import { TASK_STATUSES, TASK_STATUS_LABELS, TASK_STATUS_TONES } from '../taskDisplay'
 import type { TaskStatus } from '../types'
 
 const ALL = 'ALL'
@@ -79,6 +80,7 @@ export function TaskFilters({ search, onChange }: TaskFiltersProps) {
             <SelectItem value={ALL}>All statuses</SelectItem>
             {TASK_STATUSES.map((status) => (
               <SelectItem key={status} value={status}>
+                <ToneDot tone={TASK_STATUS_TONES[status]} />
                 {TASK_STATUS_LABELS[status]}
               </SelectItem>
             ))}

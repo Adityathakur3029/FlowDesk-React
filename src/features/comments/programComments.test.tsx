@@ -88,6 +88,18 @@ function mockPost(respond: () => Response | Promise<Response>) {
 
 const created = (data: Comment) => HttpResponse.json({ data }, { status: 201 })
 
+// GET /employees?q= for the @ list: a case-insensitive name match.
+function mockPeople() {
+  const people = [janeDoe, { ...janeDoe, ...ravi }]
+  server.use(
+    http.get(api('/employees'), ({ request }) => {
+      const q = new URL(request.url).searchParams.get('q')?.toLowerCase() ?? ''
+      const data = people.filter((person) => person.name.toLowerCase().includes(q))
+      return HttpResponse.json({ data, meta: { total: data.length, limit: 20, offset: 0 } })
+    }),
+  )
+}
+
 function renderComments() {
   return renderSignedIn('/comments', {
     routes: (
@@ -296,5 +308,48 @@ describe('ProgramComments', () => {
     expect(within(composer()).getByLabelText('Comment')).toBeDisabled()
     release()
     expect(await screen.findByText('Comment added')).toBeInTheDocument()
+  })
+
+  it('mentions someone picked from the @ list and posts the mention token', async () => {
+    mockComments(() => [])
+    mockPeople()
+    const calls = mockPost(() => created(comment({ author: jane, body: 'Thanks' })))
+    renderComments()
+    await screen.findByText('No comments yet')
+
+    const box = within(composer()).getByLabelText('Comment')
+    await userEvent.type(box, 'Thanks @ja')
+    const option = await screen.findByRole('option', { name: /Jane Doe/ })
+    expect(option).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('option', { name: /Ravi Kumar/ })).not.toBeInTheDocument()
+
+    await userEvent.keyboard('{Enter}')
+    expect(box).toHaveValue('Thanks @Jane Doe ')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    await userEvent.type(box, 'please review')
+    expect(within(composer()).getByRole('list', { name: 'Mentioning' })).toHaveTextContent('@Jane Doe')
+    await userEvent.click(within(composer()).getByRole('button', { name: 'Post comment' }))
+
+    await waitFor(() => expect(calls.bodies).toEqual([{ body: `Thanks @[Jane Doe](mention:${jane.id}) please review` }]))
+  })
+
+  it('closes the @ list on Escape and keeps a name that was typed, not picked, as text', async () => {
+    mockComments(() => [])
+    mockPeople()
+    const calls = mockPost(() => created(comment({ author: jane, body: 'x' })))
+    renderComments()
+    await screen.findByText('No comments yet')
+
+    const box = within(composer()).getByLabelText('Comment')
+    await userEvent.type(box, '@zz')
+    expect(await within(composer()).findByText('No one matches “zz”.')).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    expect(within(composer()).queryByText('No one matches “zz”.')).not.toBeInTheDocument()
+
+    await userEvent.clear(box)
+    await userEvent.type(box, 'Ask @Ravi Kumar{Escape}')
+    await userEvent.click(within(composer()).getByRole('button', { name: 'Post comment' }))
+    await waitFor(() => expect(calls.bodies).toEqual([{ body: 'Ask @Ravi Kumar' }]))
   })
 })

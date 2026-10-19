@@ -17,7 +17,10 @@ export function CommentBody({ body, mentions }: CommentBodyProps) {
         part.type === 'text' ? (
           part.text
         ) : (
-          <span key={i} className="font-medium text-primary">
+          <span
+            key={i}
+            className="rounded bg-blue-100 px-1 font-medium text-blue-800 dark:bg-blue-500/20 dark:text-blue-200"
+          >
             @{names.get(part.employeeId) ?? part.label}
           </span>
         ),

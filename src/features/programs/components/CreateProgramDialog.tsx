@@ -6,6 +6,7 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { getErrorMessage, hasErrorCode } from '@/api/errors'
 import { useAuth } from '@/auth/useAuth'
+import { ToneDot } from '@/components/data/ToneBadge'
 import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,7 +28,7 @@ import { paths } from '@/routes/paths'
 import { useCreateProgram } from '../api'
 import { suggestProgramKey } from '../programKey'
 import { programFields, PROGRAM_KEY_PATTERN, programSchema, type ProgramFormValues } from '../programSchema'
-import { PROGRAM_STATUSES, PROGRAM_STATUS_LABELS } from '../programStatus'
+import { PROGRAM_STATUSES, PROGRAM_STATUS_LABELS, PROGRAM_STATUS_TONES } from '../programStatus'
 import type { CreateProgramRequest } from '../types'
 
 const defaultValues = (ownerTeamId: string): ProgramFormValues => ({
@@ -305,6 +306,7 @@ export function CreateProgramDialog({ onCreated }: CreateProgramDialogProps) {
                       <SelectContent>
                         {PROGRAM_STATUSES.map((status) => (
                           <SelectItem key={status} value={status}>
+                            <ToneDot tone={PROGRAM_STATUS_TONES[status]} />
                             {PROGRAM_STATUS_LABELS[status]}
                           </SelectItem>
                         ))}

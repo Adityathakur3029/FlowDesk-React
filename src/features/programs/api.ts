@@ -1,8 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
-import { hasErrorCode, type ApiError } from '@/api/errors'
+import { hasErrorCode, isApiError, type ApiError } from '@/api/errors'
 import { teamKeys } from '@/features/teams'
-import type { CreateProgramRequest, Program, ProgramList, ProgramListParams } from './types'
+import type { CreateProgramRequest, Program, ProgramList, ProgramListParams, UpdateProgramRequest } from './types'
 
 export const programKeys = {
   all: ['programs'] as const,
@@ -42,6 +42,24 @@ export function useCreateProgram() {
     onError: (error) => {
       // The picked owner team was deleted meanwhile: refetch the directory so it leaves the select.
       if (hasErrorCode(error, 'OWNER_TEAM_NOT_FOUND')) void queryClient.invalidateQueries({ queryKey: teamKeys.all })
+    },
+  })
+}
+
+// PATCH /programs/{programId}, ADMIN or MANAGER. The page sends only the field being edited, so it can't
+// overwrite someone else's change to another field. The date range is checked on the merged values.
+export function useUpdateProgram(programId: string) {
+  const queryClient = useQueryClient()
+  return useMutation<Program, ApiError, UpdateProgramRequest>({
+    mutationFn: async (body) =>
+      (await unwrap(apiClient.PATCH('/programs/{programId}', { params: { path: { programId } }, body }))).data,
+    onSuccess: (program) => {
+      queryClient.setQueryData(programKeys.detail(programId), program)
+      void queryClient.invalidateQueries({ queryKey: programKeys.lists() })
+    },
+    onError: (error) => {
+      // Deleted meanwhile: refetch, so the page shows "Program not found".
+      if (isApiError(error) && error.status === 404) void queryClient.invalidateQueries({ queryKey: programKeys.detail(programId) })
     },
   })
 }
