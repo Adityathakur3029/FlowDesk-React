@@ -103,7 +103,7 @@ function ProgramView({ program }: { program: Program }) {
           {/* A strip in the status colour; the badge below says what it means. */}
           <div aria-hidden="true" className={cn('absolute inset-x-0 top-0 h-1', TONE_DOT_CLASSES[PROGRAM_STATUS_TONES[program.status]])} />
           <div className="flex items-start gap-4">
-            <span className="flex h-12 min-w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 px-2 font-mono text-sm font-semibold text-primary ring-1 ring-primary/20">
+            <span className="flex h-12 min-w-12 shrink-0 items-center justify-center rounded-xl bg-primary px-2 font-mono text-sm font-semibold text-primary-foreground shadow-sm">
               {program.key}
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-2">

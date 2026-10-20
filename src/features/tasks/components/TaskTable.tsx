@@ -1,8 +1,8 @@
 import { Link } from 'react-router'
+import { KeyBadge } from '@/components/data/KeyBadge'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatCalendarDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { taskPath } from '@/routes/paths'
 import type { Task } from '../types'
@@ -11,7 +11,7 @@ import { TaskStatusBadge } from './TaskStatusBadge'
 import { TaskTypeLabel } from './TaskTypeLabel'
 
 const SKELETON_ROWS = 5
-const COLUMNS = 7
+const COLUMNS = 6
 const MAX_LABELS_SHOWN = 3
 
 interface TaskTableProps {
@@ -49,12 +49,12 @@ export function TaskTable({ tasks, busy = false }: TaskTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Key</TableHead>
-            <TableHead>Title</TableHead>
+            {/* The title takes all the spare width, so the columns after it sit at the right edge. */}
+            <TableHead className="w-full">Title</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Assignee</TableHead>
-            <TableHead>Due</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -70,9 +70,11 @@ export function TaskTable({ tasks, busy = false }: TaskTableProps) {
               ))
             : tasks.map((task) => (
                 <TableRow key={task.id}>
-                  <TableCell className="font-mono text-sm whitespace-nowrap">{task.key}</TableCell>
-                  <TableCell className="whitespace-normal">
-                    <div className="flex max-w-md flex-col gap-1">
+                  <TableCell>
+                    <KeyBadge kind="task">{task.key}</KeyBadge>
+                  </TableCell>
+                  <TableCell className="min-w-64 whitespace-normal">
+                    <div className="flex flex-col gap-1">
                       <Link to={taskPath(task.programId, task.key)} className="font-medium underline-offset-4 hover:underline">
                         {task.title}
                       </Link>
@@ -91,9 +93,6 @@ export function TaskTable({ tasks, busy = false }: TaskTableProps) {
                   <TableCell className="whitespace-nowrap">
                     {/* null when unassigned, although the generated type says otherwise (spec 08, contract note 1). */}
                     {task.assignee ? task.assignee.name : <span className="text-muted-foreground">Unassigned</span>}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {task.dueDate ? formatCalendarDate(task.dueDate) : <span className="text-muted-foreground">None</span>}
                   </TableCell>
                 </TableRow>
               ))}

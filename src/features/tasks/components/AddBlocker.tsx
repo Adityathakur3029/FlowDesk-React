@@ -3,6 +3,7 @@ import { Command as CommandPrimitive } from 'cmdk'
 import { Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getErrorMessage, isApiError } from '@/api/errors'
+import { KeyBadge } from '@/components/data/KeyBadge'
 import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
 import { Button } from '@/components/ui/button'
 import { CommandItem, CommandList } from '@/components/ui/command'
@@ -106,7 +107,7 @@ export function AddBlocker({ task, taskRef, onClose }: AddBlockerProps) {
             <CommandList label="Tasks" className="max-h-64">
               {suggestions.map((candidate) => (
                 <CommandItem key={candidate.id} value={candidate.id} onSelect={() => pick(candidate)}>
-                  <span className="font-mono text-xs text-muted-foreground">{candidate.key}</span>{' '}
+                  <KeyBadge kind="task">{candidate.key}</KeyBadge>{' '}
                   <span className="min-w-0 flex-1 truncate">{candidate.title}</span>
                   <TaskStatusBadge status={candidate.status} />
                 </CommandItem>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { Badge } from '@/components/ui/badge'
+import { KeyBadge } from '@/components/data/KeyBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { TeamDirectory } from '@/features/teams'
@@ -52,9 +52,7 @@ export function ProgramTable({ programs, teams, teamsLoading = false, busy = fal
             : programs.map((program) => (
                 <TableRow key={program.id}>
                   <TableCell>
-                    <Badge variant="outline" className="font-mono">
-                      {program.key}
-                    </Badge>
+                    <KeyBadge kind="program">{program.key}</KeyBadge>
                   </TableCell>
                   <TableCell className="whitespace-normal">
                     <div className="flex max-w-md flex-col gap-0.5">

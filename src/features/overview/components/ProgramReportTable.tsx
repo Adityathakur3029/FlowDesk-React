@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router'
+import { KeyBadge } from '@/components/data/KeyBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,9 +53,9 @@ export function ProgramReportTable({ programs }: { programs: readonly ProgramRep
                   <TableCell className="max-w-72">
                     <Link
                       to={programPath(program.id)}
-                      className="flex min-w-0 items-baseline gap-2 font-medium underline-offset-4 hover:underline"
+                      className="flex min-w-0 items-center gap-2 font-medium underline-offset-4 hover:underline"
                     >
-                      <span className="font-mono text-xs text-muted-foreground">{program.key}</span>{' '}
+                      <KeyBadge kind="program">{program.key}</KeyBadge>{' '}
                       <span className="truncate">{program.name}</span>
                     </Link>
                   </TableCell>

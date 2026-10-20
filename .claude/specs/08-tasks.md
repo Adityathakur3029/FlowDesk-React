@@ -201,13 +201,14 @@ shadcn `Table` with `aria-label="Tasks"` in an `overflow-x-auto rounded-lg borde
 
 | Column | Content |
 |---|---|
-| Key | `key` in `font-mono text-sm`, `whitespace-nowrap` |
-| Title | title (`font-medium`), `max-w-md`, wraps; labels below as small `outline` badges, the first 3 plus "+N" |
+| Key | `KeyBadge kind="task"` (solid dark blue) |
+| Title | title (`font-medium`), `w-full` header so it takes the spare width and the rest sit at the right; `min-w-64`, wraps only when it must; labels below as small `outline` badges, the first 3 plus "+N" |
 | Type | type label |
 | Status | `TaskStatusBadge` |
 | Priority | `TaskPriorityLabel`, `whitespace-nowrap` |
 | Assignee | `assignee.name`, or "Unassigned" (muted) |
-| Due | `formatCalendarDate(dueDate)`, or "None" (muted), `whitespace-nowrap` |
+
+No due-date column (dropped to give the title room); the due date is on the task page.
 
 Rows aren't links yet: the task page is the next spec (Out of scope).
 
@@ -321,7 +322,7 @@ Focus after a server error uses the effect keyed on the mutation's `error`, as i
 | | labels `'bad label!'`, 21 labels | rejected with the messages above |
 | `features/tasks/searchParams.test.ts` | parse `?q=%20x%20&status=NOPE&offset=-1` | `{ q: 'x', offset: 0 }` |
 | | `updateTaskSearch('?tab=comments&offset=40', { status: 'DONE' })` | `tab=comments&status=DONE` |
-| `features/tasks/tasks.test.tsx` (renders `ProgramTasks`) | 200 with two tasks | key, title, labels, type, status, priority, assignee / "Unassigned", due / "None"; request `limit=20&offset=0` |
+| `features/tasks/tasks.test.tsx` (renders `ProgramTasks`) | 200 with two tasks | key, title, labels, type, status, priority, assignee / "Unassigned", no Due column; request `limit=20&offset=0` |
 | | `total 0`, no filters | "No tasks yet" + Create task |
 | | filters match nothing → Clear filters | "No tasks match these filters"; URL loses `q`/`status` |
 | | pick status In progress | request `status=IN_PROGRESS&limit=20&offset=0`; URL `?status=IN_PROGRESS`; offset dropped |

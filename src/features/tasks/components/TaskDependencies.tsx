@@ -3,6 +3,7 @@ import { Loader2, Plus, X } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/api/errors'
+import { KeyBadge } from '@/components/data/KeyBadge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { taskPath } from '@/routes/paths'
@@ -130,9 +131,9 @@ function DependencyGroup({ title, programId, tasks, renderRemove }: DependencyGr
             <Link
               to={taskPath(programId, task.key)}
               title={task.title}
-              className="flex min-w-0 flex-1 items-baseline gap-2 underline-offset-4 hover:underline"
+              className="flex min-w-0 flex-1 items-center gap-2 underline-offset-4 hover:underline"
             >
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">{task.key}</span>{' '}
+              <KeyBadge kind="task">{task.key}</KeyBadge>{' '}
               {/* The space keeps "MKT-3 Finalise sample" apart for screen readers; flex hides it visually. */}
               <span className="truncate text-sm font-medium">{task.title}</span>
             </Link>

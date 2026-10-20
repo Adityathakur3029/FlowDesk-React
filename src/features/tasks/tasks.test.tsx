@@ -4,7 +4,6 @@ import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import type { Employee } from '@/features/employees'
-import { calendarDateFormat } from '@/lib/dates'
 import { api, currentUrl, janeDoe, renderSignedIn } from '@/test/renderApp'
 import { server } from '@/test/server'
 import { ProgramTasks } from './components/ProgramTasks'
@@ -115,7 +114,7 @@ async function openCreateDialog() {
 const row = (title: string) => screen.getByText(title).closest('tr')!
 
 describe('ProgramTasks list', () => {
-  it('lists tasks with key, labels, type, status, priority, assignee and due date', async () => {
+  it('lists tasks with key, labels, type, status, priority and assignee, without a due date', async () => {
     const queries = mockTasks(() => [draft, venue])
     renderTasks()
 
@@ -127,7 +126,6 @@ describe('ProgramTasks list', () => {
     expect(first.getByText('Discussion')).toBeInTheDocument()
     expect(first.getByText('Highest')).toBeInTheDocument()
     expect(first.getByText('Jane Doe')).toBeInTheDocument()
-    expect(first.getByText(calendarDateFormat.format(new Date('2026-10-31')))).toBeInTheDocument()
 
     const second = within(row('Book the venue'))
     expect(second.getByText('MKT-12')).toBeInTheDocument()
@@ -135,7 +133,7 @@ describe('ProgramTasks list', () => {
     expect(second.getByText('In progress')).toBeInTheDocument()
     expect(second.getByText('Medium')).toBeInTheDocument()
     expect(second.getByText('Unassigned')).toBeInTheDocument()
-    expect(second.getByText('None')).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Due' })).not.toBeInTheDocument()
     expect(queries).toEqual(['limit=20&offset=0'])
   })
 
