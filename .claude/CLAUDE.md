@@ -66,7 +66,7 @@ src/
   components/
     ui/                shadcn components (added with `npx shadcn add <name>`)
     brand/             SaajhaLogo (public/logo.png)
-    layout/            AppShell, AppSidebar, Header, UserMenu, PageHeader, navItems.ts (sidebar entries + roles)
+    layout/            AppShell, AppSidebar, SidebarUserMenu, MobileTopBar, PageHeader, navItems.ts (sidebar entries + roles)
     feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary, FormErrorAlert, ConfirmDeleteDialog
     data/              Pagination (shared by list pages), ToneBadge, DetailRow (Details card rows, editable in place)
   hooks/               shared hooks: shadcn's use-mobile.ts, useDebouncedValue.ts, useInlineEdit.ts
@@ -179,8 +179,9 @@ Keep this table in sync with the contract when the backend changes.
 
 - Use shadcn/ui components from `src/components/ui`; add new ones with `npx shadcn add <name>` instead of hand-rolling. Style with Tailwind utilities and `cn()`.
 - Reuse `components/feedback/*` for loading, empty, error, forbidden and not-found states, and sonner toasts for mutation results.
-- `AppShell` holds the sidebar navigation, header, user menu (name, role, logout) and an `<Outlet />`. Nav items declare the roles they're shown to. A new section is one entry in `components/layout/navItems.ts` plus its route; the sidebar itself doesn't change.
+- `AppShell` holds the sidebar and an `<Outlet />`; there's no header on desktop. The sidebar footer has the collapse button and the user menu (name, role, logout). Phones get a thin `MobileTopBar` with the sidebar toggle, because the sidebar is a slide-out sheet there. Nav items declare the roles they're shown to. A new section is one entry in `components/layout/navItems.ts` plus its route; the sidebar itself doesn't change.
 - Every page starts with `<PageHeader title description? actions?>`, which also sets the document title.
+- Form dialogs put their `<form>` inside `DialogBody` (a local addition to `ui/dialog.tsx`): `DialogContent` is capped at the viewport and only the body scrolls, so the title and buttons stay visible. Exception: a body with an `absolute` dropdown at its bottom (`EmployeeMultiPicker` in `CreateTeamDialog`) would clip it.
 - Forms: react-hook-form + zod resolver. The zod schema mirrors the contract's documented constraints (lengths, enums, required fields) for instant feedback only; server `details` always win.
 - Accessibility: label every input, make buttons real `<button>`s, keep keyboard focus visible.
 

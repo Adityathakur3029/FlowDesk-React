@@ -6,7 +6,7 @@ import type { Program } from '@/features/programs/types'
 import { calendarDateFormat } from '@/lib/dates'
 import { api, currentUrl, janeDoe, renderSignedIn } from '@/test/renderApp'
 import { server } from '@/test/server'
-import type { EmployeeSummary, TaskDetail, UpdateTaskRequest } from './types'
+import type { EmployeeSummary, TaskDetail, TaskSummary, UpdateTaskRequest } from './types'
 
 // The contract's Program and TaskDetail examples.
 const marketing: Program = {
@@ -179,7 +179,11 @@ describe('TaskPage', () => {
     expect(detail('Labels')).toHaveTextContent('None')
     expect(detail('Completed')).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date('2026-10-19T08:00:00.000Z')))
     expect(screen.getByText('No description.')).toBeInTheDocument()
-    expect(screen.getAllByText('None')).toHaveLength(3) // labels, blocked by, blocks
+    // One line for both sides, and no empty lists.
+    expect(screen.getByText('No dependencies.')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Blocked by' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Blocks' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add blocker' })).toBeInTheDocument()
   })
 })
 
@@ -576,6 +580,24 @@ describe('TaskPage blockers', () => {
     expect(removed).toEqual([`MKT-7/${sample.id}`])
     expect(screen.queryByRole('list', { name: 'Blocked by' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Status: In progress. Change status' })).toBeInTheDocument()
+  })
+
+  it('shows five blockers, and the rest after "Show 2 more"', async () => {
+    const blockers = Array.from(
+      { length: 7 },
+      (_, i): TaskSummary => ({ id: `00000000-0000-4000-8000-00000000002${i}`, key: `MKT-${20 + i}`, title: `Blocker ${i + 1}`, status: 'ON_HOLD' }),
+    )
+    mockTask(() => ({ ...draft, dependsOn: blockers }))
+    await openTask()
+
+    const rows = () => within(screen.getByRole('list', { name: 'Blocked by' })).getAllByRole('listitem')
+    expect(rows()).toHaveLength(5)
+    await userEvent.click(screen.getByRole('button', { name: 'Show 2 more' }))
+    expect(rows()).toHaveLength(7)
+    await userEvent.click(screen.getByRole('button', { name: 'Show less' }))
+    expect(rows()).toHaveLength(5)
+    // Blocks has one task, so no toggle of its own.
+    expect(screen.getAllByRole('button', { name: /^Show / })).toHaveLength(1)
   })
 
   it('toasts the error when removing fails', async () => {

@@ -140,6 +140,8 @@ export const navItems: NavItem[] = [
 
 ## Header and user menu
 
+> Replaced by [12-layout-and-density](./12-layout-and-density.md): there's no header on desktop. The user menu (`SidebarUserMenu`) and a collapse button sit in the sidebar footer, and phones get a `MobileTopBar` with only the toggle. The section below is kept as the original design.
+
 - `Header`: sticky top bar, `h-14`, bottom border. Left: `SidebarTrigger` (labelled "Toggle sidebar") and a `Separator`. Middle: the page `<h1>` (each page passes its title through a `title` prop on a `PageHeader`, see below). Right: `UserMenu`.
 - `UserMenu`: a `<button>` showing an `Avatar` with initials (first letters of the first two words of `employee.name`, uppercased). It opens a `DropdownMenu`:
   - label: name (bold), email (muted), role `Badge`

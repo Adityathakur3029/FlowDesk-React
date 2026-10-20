@@ -1,9 +1,11 @@
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Link, NavLink, useMatch } from 'react-router'
 import { useAuth } from '@/auth/useAuth'
 import { SaajhaLogo } from '@/components/brand/SaajhaLogo'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -16,6 +18,7 @@ import {
 } from '@/components/ui/sidebar'
 import { paths } from '@/routes/paths'
 import { navItems as defaultNavItems, visibleNavItems, type NavItem } from './navItems'
+import { SidebarUserMenu } from './SidebarUserMenu'
 
 interface AppSidebarProps {
   items?: readonly NavItem[]
@@ -59,6 +62,18 @@ export function AppSidebar({ items = defaultNavItems }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          {/* The phone sheet closes by tapping outside it, so it has no collapse button. */}
+          {!isMobile && (
+            <SidebarMenuItem>
+              <CollapseButton />
+            </SidebarMenuItem>
+          )}
+          <SidebarUserMenu />
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
@@ -73,6 +88,19 @@ function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate: () => vo
         <item.icon aria-hidden="true" />
         <span>{item.label}</span>
       </NavLink>
+    </SidebarMenuButton>
+  )
+}
+
+// Desktop's sidebar toggle, now that there's no header. The label is the accessible name, and the tooltip when collapsed.
+function CollapseButton() {
+  const { open, toggleSidebar } = useSidebar()
+  const label = open ? 'Collapse sidebar' : 'Expand sidebar'
+  const Icon = open ? PanelLeftClose : PanelLeftOpen
+  return (
+    <SidebarMenuButton type="button" tooltip={label} onClick={toggleSidebar} className="text-muted-foreground">
+      <Icon aria-hidden="true" />
+      <span>{label}</span>
     </SidebarMenuButton>
   )
 }

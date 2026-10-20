@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -139,7 +140,7 @@ export function CreateTaskDialog({ programId, programName, onCreated }: CreateTa
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-xl"
+        className="sm:max-w-xl"
         // Escape inside an open suggestion list closes the list, not the dialog.
         onEscapeKeyDown={(event) => {
           if (event.target instanceof Element && event.target.closest('[data-picker-open="true"]')) event.preventDefault()
@@ -150,251 +151,253 @@ export function CreateTaskDialog({ programId, programName, onCreated }: CreateTa
           <DialogDescription>Adds a task to {programName}. You'll be its reporter.</DialogDescription>
         </DialogHeader>
 
-        <form id="create-task-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
-          <FormErrorAlert errors={formErrors} />
+        <DialogBody>
+          <form id="create-task-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
+            <FormErrorAlert errors={formErrors} />
 
-          <FieldGroup>
-            <Controller
-              name="title"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="task-title">Title</FieldLabel>
-                  <Input
-                    {...field}
-                    id="task-title"
-                    autoComplete="off"
-                    placeholder="Draft survey questions"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="task-title-error"
-                    disabled={pending}
-                  />
-                  <FieldError id="task-title-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <div className="grid gap-4 sm:grid-cols-3">
+            <FieldGroup>
               <Controller
-                name="type"
-                control={form.control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel htmlFor="task-type">Type</FieldLabel>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
-                      <SelectTrigger id="task-type" ref={field.ref} onBlur={field.onBlur} className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TASK_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            <TaskTypeLabel type={type} />
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="status"
-                control={form.control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel htmlFor="task-status">Status</FieldLabel>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
-                      <SelectTrigger id="task-status" ref={field.ref} onBlur={field.onBlur} className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CREATABLE_TASK_STATUSES.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            <ToneDot tone={TASK_STATUS_TONES[status]} />
-                            {TASK_STATUS_LABELS[status]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="priority"
-                control={form.control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel htmlFor="task-priority">Priority</FieldLabel>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
-                      <SelectTrigger id="task-priority" ref={field.ref} onBlur={field.onBlur} className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TASK_PRIORITIES.map((priority) => (
-                          <SelectItem key={priority} value={priority}>
-                            <TaskPriorityLabel priority={priority} />
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                )}
-              />
-            </div>
-
-            <Controller
-              name="assignee"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <div className="flex items-center justify-between gap-2">
-                    {/* The picker's input gets its accessible name from `label`; this is the visible one. */}
-                    <FieldTitle>Assignee (optional)</FieldTitle>
-                    {employee && assignee.length === 0 && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="h-auto p-0"
-                        onClick={() => field.onChange([employee])}
-                        disabled={pending}
-                      >
-                        Assign to me
-                      </Button>
-                    )}
-                  </div>
-                  <EmployeeMultiPicker
-                    label="Assignee"
-                    value={field.value}
-                    onChange={field.onChange}
-                    max={1}
-                    disabled={pending}
-                    invalid={fieldState.invalid}
-                    placeholder="Search by name or email"
-                    aria-describedby="task-assignee-error"
-                  />
-                  <FieldError id="task-assignee-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Controller
-                name="startDate"
+                name="title"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="task-start-date">Start date (optional)</FieldLabel>
+                    <FieldLabel htmlFor="task-title">Title</FieldLabel>
                     <Input
                       {...field}
-                      id="task-start-date"
-                      type="date"
+                      id="task-title"
+                      autoComplete="off"
+                      placeholder="Draft survey questions"
                       aria-invalid={fieldState.invalid}
-                      aria-describedby="task-start-date-error"
+                      aria-describedby="task-title-error"
                       disabled={pending}
                     />
-                    <FieldError id="task-start-date-error" errors={[fieldState.error]} />
+                    <FieldError id="task-title-error" errors={[fieldState.error]} />
                   </Field>
                 )}
               />
 
-              <Controller
-                name="dueDate"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="task-due-date">Due date (optional)</FieldLabel>
-                    <Input
-                      {...field}
-                      id="task-due-date"
-                      type="date"
-                      aria-invalid={fieldState.invalid}
-                      aria-describedby="task-due-date-error"
-                      disabled={pending}
-                    />
-                    <FieldError id="task-due-date-error" errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-            </div>
-
-            <Controller
-              name="estimateHours"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="task-estimate">Estimate in hours (optional)</FieldLabel>
-                  <Input
-                    {...field}
-                    id="task-estimate"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    placeholder="1.5"
-                    className="w-32"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="task-estimate-hint task-estimate-error"
-                    disabled={pending}
-                  />
-                  <FieldDescription id="task-estimate-hint">For example 1.5 for 1 h 30 min.</FieldDescription>
-                  <FieldError id="task-estimate-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="labels"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="task-labels">Labels (optional)</FieldLabel>
-                  <Input
-                    {...field}
-                    id="task-labels"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="survey, q4"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="task-labels-hint task-labels-error"
-                    disabled={pending}
-                  />
-                  <FieldDescription id="task-labels-hint">Separate with commas. Saved in lowercase.</FieldDescription>
-                  {labels.length > 0 && (
-                    <ul aria-label="Labels to add" className="flex flex-wrap gap-1">
-                      {labels.map((label) => (
-                        <li key={label}>
-                          <Badge variant="outline" className="font-normal">
-                            {label}
-                          </Badge>
-                        </li>
-                      ))}
-                    </ul>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Controller
+                  name="type"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel htmlFor="task-type">Type</FieldLabel>
+                      <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
+                        <SelectTrigger id="task-type" ref={field.ref} onBlur={field.onBlur} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TASK_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              <TaskTypeLabel type={type} />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
                   )}
-                  <FieldError id="task-labels-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
+                />
 
-            <Controller
-              name="description"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="task-description">Description (optional)</FieldLabel>
-                  <Textarea
-                    {...field}
-                    id="task-description"
-                    rows={4}
-                    placeholder="Details, links, acceptance criteria"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="task-description-error"
-                    disabled={pending}
-                  />
-                  <FieldError id="task-description-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </form>
+                <Controller
+                  name="status"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel htmlFor="task-status">Status</FieldLabel>
+                      <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
+                        <SelectTrigger id="task-status" ref={field.ref} onBlur={field.onBlur} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CREATABLE_TASK_STATUSES.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              <ToneDot tone={TASK_STATUS_TONES[status]} />
+                              {TASK_STATUS_LABELS[status]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="priority"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel htmlFor="task-priority">Priority</FieldLabel>
+                      <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
+                        <SelectTrigger id="task-priority" ref={field.ref} onBlur={field.onBlur} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TASK_PRIORITIES.map((priority) => (
+                            <SelectItem key={priority} value={priority}>
+                              <TaskPriorityLabel priority={priority} />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                />
+              </div>
+
+              <Controller
+                name="assignee"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <div className="flex items-center justify-between gap-2">
+                      {/* The picker's input gets its accessible name from `label`; this is the visible one. */}
+                      <FieldTitle>Assignee (optional)</FieldTitle>
+                      {employee && assignee.length === 0 && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0"
+                          onClick={() => field.onChange([employee])}
+                          disabled={pending}
+                        >
+                          Assign to me
+                        </Button>
+                      )}
+                    </div>
+                    <EmployeeMultiPicker
+                      label="Assignee"
+                      value={field.value}
+                      onChange={field.onChange}
+                      max={1}
+                      disabled={pending}
+                      invalid={fieldState.invalid}
+                      placeholder="Search by name or email"
+                      aria-describedby="task-assignee-error"
+                    />
+                    <FieldError id="task-assignee-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="startDate"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="task-start-date">Start date (optional)</FieldLabel>
+                      <Input
+                        {...field}
+                        id="task-start-date"
+                        type="date"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby="task-start-date-error"
+                        disabled={pending}
+                      />
+                      <FieldError id="task-start-date-error" errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="dueDate"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="task-due-date">Due date (optional)</FieldLabel>
+                      <Input
+                        {...field}
+                        id="task-due-date"
+                        type="date"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby="task-due-date-error"
+                        disabled={pending}
+                      />
+                      <FieldError id="task-due-date-error" errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+              </div>
+
+              <Controller
+                name="estimateHours"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="task-estimate">Estimate in hours (optional)</FieldLabel>
+                    <Input
+                      {...field}
+                      id="task-estimate"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="1.5"
+                      className="w-32"
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="task-estimate-hint task-estimate-error"
+                      disabled={pending}
+                    />
+                    <FieldDescription id="task-estimate-hint">For example 1.5 for 1 h 30 min.</FieldDescription>
+                    <FieldError id="task-estimate-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="labels"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="task-labels">Labels (optional)</FieldLabel>
+                    <Input
+                      {...field}
+                      id="task-labels"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="survey, q4"
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="task-labels-hint task-labels-error"
+                      disabled={pending}
+                    />
+                    <FieldDescription id="task-labels-hint">Separate with commas. Saved in lowercase.</FieldDescription>
+                    {labels.length > 0 && (
+                      <ul aria-label="Labels to add" className="flex flex-wrap gap-1">
+                        {labels.map((label) => (
+                          <li key={label}>
+                            <Badge variant="outline" className="font-normal">
+                              {label}
+                            </Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <FieldError id="task-labels-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="description"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="task-description">Description (optional)</FieldLabel>
+                    <Textarea
+                      {...field}
+                      id="task-description"
+                      rows={4}
+                      placeholder="Details, links, acceptance criteria"
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="task-description-error"
+                      disabled={pending}
+                    />
+                    <FieldError id="task-description-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+          </form>
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={pending}>

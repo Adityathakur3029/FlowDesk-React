@@ -11,6 +11,7 @@ import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -160,225 +161,227 @@ export function CreateProgramDialog({ onCreated }: CreateProgramDialogProps) {
           <DialogDescription>Programs group related tasks. Each one is owned by a team.</DialogDescription>
         </DialogHeader>
 
-        <form id="create-program-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
-          <FormErrorAlert errors={formErrors} />
+        <DialogBody>
+          <form id="create-program-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
+            <FormErrorAlert errors={formErrors} />
 
-          <FieldGroup>
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="program-name">Name</FieldLabel>
-                  <Input
-                    {...field}
-                    onChange={(event) => {
-                      field.onChange(event)
-                      const suggestion = suggestProgramKey(event.target.value)
-                      const current = form.getValues('key')
-                      if (current === '' || current === lastSuggestion.current) {
-                        form.setValue('key', suggestion, { shouldValidate: form.formState.isSubmitted })
-                      }
-                      lastSuggestion.current = suggestion
-                    }}
-                    id="program-name"
-                    autoComplete="off"
-                    placeholder="Marketing Research"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="program-name-error"
-                    disabled={pending}
-                  />
-                  <FieldError id="program-name-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="key"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="program-key">Key</FieldLabel>
-                  <Input
-                    {...field}
-                    onChange={(event) => {
-                      // Uppercase in the DOM first, keeping the caret where it was, so React doesn't move it to the end.
-                      const input = event.target
-                      const { selectionStart, selectionEnd } = input
-                      input.value = input.value.toUpperCase()
-                      input.setSelectionRange(selectionStart, selectionEnd)
-                      field.onChange(input.value)
-                    }}
-                    id="program-key"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="MKT"
-                    className="font-mono uppercase"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="program-key-hint program-key-error"
-                    disabled={pending}
-                  />
-                  {/* key is immutable (PATCH rejects it) and stays taken after a delete, so a typo is permanent. */}
-                  <FieldDescription id="program-key-hint">
-                    {PROGRAM_KEY_PATTERN.test(key.trim())
-                      ? `Tasks will be numbered ${key.trim()}-1, ${key.trim()}-2… The key can't be changed later.`
-                      : "2–10 letters or digits, starting with a letter. It can't be changed later."}
-                  </FieldDescription>
-                  <FieldError id="program-key-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <div className="grid gap-4 sm:grid-cols-2">
+            <FieldGroup>
               <Controller
-                name="ownerTeamId"
+                name="name"
                 control={form.control}
                 render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid} data-disabled={ownerDisabled && !pending ? true : undefined}>
-                    <FieldLabel htmlFor="program-owner-team">Owner team</FieldLabel>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={ownerDisabled}>
-                      <SelectTrigger
-                        id="program-owner-team"
-                        ref={field.ref}
-                        onBlur={field.onBlur}
-                        className="w-full"
-                        aria-invalid={fieldState.invalid}
-                        aria-describedby="program-owner-team-hint program-owner-team-error"
-                      >
-                        <SelectValue placeholder={directory.isPending ? 'Loading teams…' : 'Pick a team'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
-                            {team.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription id="program-owner-team-hint">
-                      {ownerHint}
-                      {directory.isError && (
-                        <>
-                          {' '}
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="h-auto p-0"
-                            onClick={() => void directory.refetch()}
-                            disabled={directory.isFetching}
-                          >
-                            Try again
-                          </Button>
-                        </>
-                      )}
-                      {noTeams && (
-                        <>
-                          {' '}
-                          <Link to={paths.teams} onClick={close}>
-                            create a team
-                          </Link>{' '}
-                          first.
-                        </>
-                      )}
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="program-name">Name</FieldLabel>
+                    <Input
+                      {...field}
+                      onChange={(event) => {
+                        field.onChange(event)
+                        const suggestion = suggestProgramKey(event.target.value)
+                        const current = form.getValues('key')
+                        if (current === '' || current === lastSuggestion.current) {
+                          form.setValue('key', suggestion, { shouldValidate: form.formState.isSubmitted })
+                        }
+                        lastSuggestion.current = suggestion
+                      }}
+                      id="program-name"
+                      autoComplete="off"
+                      placeholder="Marketing Research"
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="program-name-error"
+                      disabled={pending}
+                    />
+                    <FieldError id="program-name-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="key"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="program-key">Key</FieldLabel>
+                    <Input
+                      {...field}
+                      onChange={(event) => {
+                        // Uppercase in the DOM first, keeping the caret where it was, so React doesn't move it to the end.
+                        const input = event.target
+                        const { selectionStart, selectionEnd } = input
+                        input.value = input.value.toUpperCase()
+                        input.setSelectionRange(selectionStart, selectionEnd)
+                        field.onChange(input.value)
+                      }}
+                      id="program-key"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="MKT"
+                      className="font-mono uppercase"
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="program-key-hint program-key-error"
+                      disabled={pending}
+                    />
+                    {/* key is immutable (PATCH rejects it) and stays taken after a delete, so a typo is permanent. */}
+                    <FieldDescription id="program-key-hint">
+                      {PROGRAM_KEY_PATTERN.test(key.trim())
+                        ? `Tasks will be numbered ${key.trim()}-1, ${key.trim()}-2… The key can't be changed later.`
+                        : "2–10 letters or digits, starting with a letter. It can't be changed later."}
                     </FieldDescription>
-                    <FieldError id="program-owner-team-error" errors={[fieldState.error]} />
+                    <FieldError id="program-key-error" errors={[fieldState.error]} />
                   </Field>
                 )}
               />
 
-              <Controller
-                name="status"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="program-status">Status</FieldLabel>
-                    <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
-                      <SelectTrigger
-                        id="program-status"
-                        ref={field.ref}
-                        onBlur={field.onBlur}
-                        className="w-full"
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="ownerTeamId"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} data-disabled={ownerDisabled && !pending ? true : undefined}>
+                      <FieldLabel htmlFor="program-owner-team">Owner team</FieldLabel>
+                      <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={ownerDisabled}>
+                        <SelectTrigger
+                          id="program-owner-team"
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          className="w-full"
+                          aria-invalid={fieldState.invalid}
+                          aria-describedby="program-owner-team-hint program-owner-team-error"
+                        >
+                          <SelectValue placeholder={directory.isPending ? 'Loading teams…' : 'Pick a team'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription id="program-owner-team-hint">
+                        {ownerHint}
+                        {directory.isError && (
+                          <>
+                            {' '}
+                            <Button
+                              type="button"
+                              variant="link"
+                              className="h-auto p-0"
+                              onClick={() => void directory.refetch()}
+                              disabled={directory.isFetching}
+                            >
+                              Try again
+                            </Button>
+                          </>
+                        )}
+                        {noTeams && (
+                          <>
+                            {' '}
+                            <Link to={paths.teams} onClick={close}>
+                              create a team
+                            </Link>{' '}
+                            first.
+                          </>
+                        )}
+                      </FieldDescription>
+                      <FieldError id="program-owner-team-error" errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="status"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="program-status">Status</FieldLabel>
+                      <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
+                        <SelectTrigger
+                          id="program-status"
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          className="w-full"
+                          aria-invalid={fieldState.invalid}
+                          aria-describedby="program-status-error"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PROGRAM_STATUSES.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              <ToneDot tone={PROGRAM_STATUS_TONES[status]} />
+                              {PROGRAM_STATUS_LABELS[status]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError id="program-status-error" errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="startDate"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="program-start-date">Start date (optional)</FieldLabel>
+                      <Input
+                        {...field}
+                        id="program-start-date"
+                        type="date"
                         aria-invalid={fieldState.invalid}
-                        aria-describedby="program-status-error"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PROGRAM_STATUSES.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            <ToneDot tone={PROGRAM_STATUS_TONES[status]} />
-                            {PROGRAM_STATUS_LABELS[status]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldError id="program-status-error" errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-            </div>
+                        aria-describedby="program-start-date-error"
+                        disabled={pending}
+                      />
+                      <FieldError id="program-start-date-error" errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="endDate"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="program-end-date">End date (optional)</FieldLabel>
+                      <Input
+                        {...field}
+                        id="program-end-date"
+                        type="date"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby="program-end-date-error"
+                        disabled={pending}
+                      />
+                      <FieldError id="program-end-date-error" errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+              </div>
+
               <Controller
-                name="startDate"
+                name="description"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="program-start-date">Start date (optional)</FieldLabel>
-                    <Input
+                    <FieldLabel htmlFor="program-description">Description (optional)</FieldLabel>
+                    <Textarea
                       {...field}
-                      id="program-start-date"
-                      type="date"
+                      id="program-description"
+                      rows={4}
+                      placeholder="What the program is for"
                       aria-invalid={fieldState.invalid}
-                      aria-describedby="program-start-date-error"
+                      aria-describedby="program-description-error"
                       disabled={pending}
                     />
-                    <FieldError id="program-start-date-error" errors={[fieldState.error]} />
+                    <FieldError id="program-description-error" errors={[fieldState.error]} />
                   </Field>
                 )}
               />
-
-              <Controller
-                name="endDate"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="program-end-date">End date (optional)</FieldLabel>
-                    <Input
-                      {...field}
-                      id="program-end-date"
-                      type="date"
-                      aria-invalid={fieldState.invalid}
-                      aria-describedby="program-end-date-error"
-                      disabled={pending}
-                    />
-                    <FieldError id="program-end-date-error" errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-            </div>
-
-            <Controller
-              name="description"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="program-description">Description (optional)</FieldLabel>
-                  <Textarea
-                    {...field}
-                    id="program-description"
-                    rows={4}
-                    placeholder="What the program is for"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="program-description-error"
-                    disabled={pending}
-                  />
-                  <FieldError id="program-description-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </form>
+            </FieldGroup>
+          </form>
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={pending}>

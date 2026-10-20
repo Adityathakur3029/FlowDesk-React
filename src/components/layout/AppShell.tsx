@@ -3,7 +3,7 @@ import { RouteErrorBoundary } from '@/components/feedback/RouteErrorBoundary'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from './AppSidebar'
-import { Header } from './Header'
+import { MobileTopBar } from './MobileTopBar'
 import type { NavItem } from './navItems'
 
 // shadcn's SidebarProvider writes this cookie on every toggle but never reads it (it expects a server to).
@@ -25,7 +25,7 @@ export function AppShell({ navItems }: AppShellProps) {
       <SidebarProvider defaultOpen={readSidebarOpen()}>
         <AppSidebar items={navItems} />
         <SidebarInset>
-          <Header />
+          <MobileTopBar />
           <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
             {/* key resets the boundary on navigation, so a crashed page doesn't stick. */}
             <RouteErrorBoundary key={pathname}>

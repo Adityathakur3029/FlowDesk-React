@@ -77,6 +77,19 @@ describe('AppShell', () => {
     expect(localStorage.length).toBe(0)
   })
 
+  it('shows who is signed in at the bottom of the sidebar, and collapses the sidebar from there', async () => {
+    renderSignedIn('/people', { routes: testRoutes })
+    const account = await screen.findByRole('button', { name: 'Account menu for Jane Doe' })
+    expect(account).toHaveTextContent('Jane Doe')
+    expect(account).toHaveTextContent('Manager')
+
+    // Ends expanded: the toggle writes the sidebar_state cookie, which the next test's shell reads.
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Expand sidebar' }))
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument()
+    expect(document.cookie).toContain('sidebar_state=true')
+  })
+
   it('shows the 404 inside the shell for an unknown path', async () => {
     renderSignedIn('/typo')
     expect(await screen.findByText('Page not found')).toBeInTheDocument()

@@ -8,6 +8,7 @@ import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -87,83 +88,85 @@ export function InviteMemberDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <form id="invite-member-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
-          <FormErrorAlert errors={formErrors} />
+        <DialogBody>
+          <form id="invite-member-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
+            <FormErrorAlert errors={formErrors} />
 
-          <FieldGroup>
-            <Controller
-              name="email"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="invite-email">Email</FieldLabel>
-                  <Input
-                    {...field}
-                    id="invite-email"
-                    type="email"
-                    autoComplete="off"
-                    placeholder="jane.doe@saajha.org"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="invite-email-hint invite-email-error"
-                    disabled={pending}
-                  />
-                  <FieldDescription id="invite-email-hint">Must be an @saajha.org address.</FieldDescription>
-                  <FieldError id="invite-email-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="invite-name">Name</FieldLabel>
-                  <Input
-                    {...field}
-                    id="invite-name"
-                    autoComplete="off"
-                    placeholder="Jane Doe"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="invite-name-error"
-                    disabled={pending}
-                  />
-                  <FieldError id="invite-name-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="role"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="invite-role">Role</FieldLabel>
-                  <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
-                    <SelectTrigger
-                      id="invite-role"
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      className="w-full"
+            <FieldGroup>
+              <Controller
+                name="email"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="invite-email">Email</FieldLabel>
+                    <Input
+                      {...field}
+                      id="invite-email"
+                      type="email"
+                      autoComplete="off"
+                      placeholder="jane.doe@saajha.org"
                       aria-invalid={fieldState.invalid}
-                      aria-describedby="invite-role-error"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {ROLE_LABELS[role]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldError id="invite-role-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </form>
+                      aria-describedby="invite-email-hint invite-email-error"
+                      disabled={pending}
+                    />
+                    <FieldDescription id="invite-email-hint">Must be an @saajha.org address.</FieldDescription>
+                    <FieldError id="invite-email-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="invite-name">Name</FieldLabel>
+                    <Input
+                      {...field}
+                      id="invite-name"
+                      autoComplete="off"
+                      placeholder="Jane Doe"
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="invite-name-error"
+                      disabled={pending}
+                    />
+                    <FieldError id="invite-name-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="role"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="invite-role">Role</FieldLabel>
+                    <Select name={field.name} value={field.value} onValueChange={field.onChange} disabled={pending}>
+                      <SelectTrigger
+                        id="invite-role"
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        className="w-full"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby="invite-role-error"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError id="invite-role-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+          </form>
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={pending}>

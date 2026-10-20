@@ -10,6 +10,7 @@ import { FormErrorAlert } from '@/components/feedback/FormErrorAlert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -150,137 +151,139 @@ export function EditEmployeeDialog({ employee, canEditDetails, isSelf }: EditEmp
           <DialogDescription>{saved.emailId}</DialogDescription>
         </DialogHeader>
 
-        <form id="edit-employee-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
-          <FormErrorAlert errors={formErrors} />
+        <DialogBody>
+          <form id="edit-employee-form" noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
+            <FormErrorAlert errors={formErrors} />
 
-          <FieldGroup>
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} data-disabled={!canEditDetails || undefined}>
-                  <FieldLabel htmlFor="edit-employee-name">Name</FieldLabel>
-                  <Input
-                    {...field}
-                    id="edit-employee-name"
-                    autoComplete="off"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="edit-employee-name-hint edit-employee-name-error"
-                    disabled={pending || !canEditDetails}
-                  />
-                  {detailsHint && <FieldDescription id="edit-employee-name-hint">{detailsHint}</FieldDescription>}
-                  <FieldError id="edit-employee-name-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="role"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} data-disabled={selfHint ? true : undefined}>
-                  <FieldLabel htmlFor="edit-employee-role">Role</FieldLabel>
-                  <Select
-                    name={field.name}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={pending || selfHint !== undefined}
-                  >
-                    <SelectTrigger
-                      id="edit-employee-role"
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      className="w-full"
+            <FieldGroup>
+              <Controller
+                name="name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid} data-disabled={!canEditDetails || undefined}>
+                    <FieldLabel htmlFor="edit-employee-name">Name</FieldLabel>
+                    <Input
+                      {...field}
+                      id="edit-employee-name"
+                      autoComplete="off"
                       aria-invalid={fieldState.invalid}
-                      aria-describedby="edit-employee-role-hint edit-employee-role-error"
+                      aria-describedby="edit-employee-name-hint edit-employee-name-error"
+                      disabled={pending || !canEditDetails}
+                    />
+                    {detailsHint && <FieldDescription id="edit-employee-name-hint">{detailsHint}</FieldDescription>}
+                    <FieldError id="edit-employee-name-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="role"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid} data-disabled={selfHint ? true : undefined}>
+                    <FieldLabel htmlFor="edit-employee-role">Role</FieldLabel>
+                    <Select
+                      name={field.name}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={pending || selfHint !== undefined}
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {ROLE_LABELS[role]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selfHint && <FieldDescription id="edit-employee-role-hint">{selfHint}</FieldDescription>}
-                  <FieldError id="edit-employee-role-error" errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
+                      <SelectTrigger
+                        id="edit-employee-role"
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        className="w-full"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby="edit-employee-role-hint edit-employee-role-error"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selfHint && <FieldDescription id="edit-employee-role-hint">{selfHint}</FieldDescription>}
+                    <FieldError id="edit-employee-role-error" errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
 
-            <Controller
-              name="isActive"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field
-                  orientation="horizontal"
-                  data-invalid={fieldState.invalid}
-                  data-disabled={selfHint ? true : undefined}
-                >
-                  <Switch
-                    id="edit-employee-active"
-                    ref={field.ref}
-                    checked={field.value}
-                    onCheckedChange={(checked) => {
-                      field.onChange(checked)
-                      // An inactive employee can't be moved (PUT …/members needs an active one).
-                      if (!checked) form.setValue('teamId', saved.teamId ?? NO_TEAM)
-                    }}
-                    onBlur={field.onBlur}
-                    disabled={pending || selfHint !== undefined}
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby="edit-employee-active-hint edit-employee-active-error"
-                  />
-                  <FieldContent>
-                    <FieldLabel htmlFor="edit-employee-active">Active</FieldLabel>
-                    <FieldDescription id="edit-employee-active-hint">
-                      {selfHint ?? "Inactive people can't sign in and are hidden from lists."}
-                    </FieldDescription>
-                    <FieldError id="edit-employee-active-error" errors={[fieldState.error]} />
-                  </FieldContent>
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="teamId"
-              control={form.control}
-              render={({ field }) => (
-                <Field data-disabled={teamHint ? true : undefined}>
-                  <FieldLabel htmlFor="edit-employee-team">Team</FieldLabel>
-                  <Select
-                    name={field.name}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={pending || teamHint !== undefined}
+              <Controller
+                name="isActive"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    orientation="horizontal"
+                    data-invalid={fieldState.invalid}
+                    data-disabled={selfHint ? true : undefined}
                   >
-                    <SelectTrigger
-                      id="edit-employee-team"
+                    <Switch
+                      id="edit-employee-active"
                       ref={field.ref}
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked)
+                        // An inactive employee can't be moved (PUT …/members needs an active one).
+                        if (!checked) form.setValue('teamId', saved.teamId ?? NO_TEAM)
+                      }}
                       onBlur={field.onBlur}
-                      className="w-full"
-                      aria-describedby="edit-employee-team-hint"
+                      disabled={pending || selfHint !== undefined}
+                      aria-invalid={fieldState.invalid}
+                      aria-describedby="edit-employee-active-hint edit-employee-active-error"
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor="edit-employee-active">Active</FieldLabel>
+                      <FieldDescription id="edit-employee-active-hint">
+                        {selfHint ?? "Inactive people can't sign in and are hidden from lists."}
+                      </FieldDescription>
+                      <FieldError id="edit-employee-active-error" errors={[fieldState.error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="teamId"
+                control={form.control}
+                render={({ field }) => (
+                  <Field data-disabled={teamHint ? true : undefined}>
+                    <FieldLabel htmlFor="edit-employee-team">Team</FieldLabel>
+                    <Select
+                      name={field.name}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={pending || teamHint !== undefined}
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_TEAM}>No team</SelectItem>
-                      {savedTeamUnknown && <SelectItem value={saved.teamId!}>Unknown team</SelectItem>}
-                      {teams.map((team) => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {teamHint && <FieldDescription id="edit-employee-team-hint">{teamHint}</FieldDescription>}
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </form>
+                      <SelectTrigger
+                        id="edit-employee-team"
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        className="w-full"
+                        aria-describedby="edit-employee-team-hint"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_TEAM}>No team</SelectItem>
+                        {savedTeamUnknown && <SelectItem value={saved.teamId!}>Unknown team</SelectItem>}
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {teamHint && <FieldDescription id="edit-employee-team-hint">{teamHint}</FieldDescription>}
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+          </form>
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={pending}>
