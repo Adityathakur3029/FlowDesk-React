@@ -31,6 +31,8 @@ const marketing: Program = {
   startDate: '2026-10-01',
   endDate: '2026-12-31',
   ownerTeamId: research.id,
+  completedAt: null,
+  cancelledAt: null,
 }
 const hiring: Program = {
   ...marketing,
@@ -127,7 +129,7 @@ describe('ProgramsPage', () => {
     mockPrograms(() => [marketing])
     renderSignedIn('/programs')
     const nav = await screen.findByRole('navigation', { name: 'Main' })
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Programs', 'People', 'Teams'])
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Programs', 'Overview', 'People', 'Teams'])
   })
 
   it('shows the start and end dates, or "Not set"', async () => {
@@ -220,6 +222,84 @@ describe('ProgramsPage', () => {
     expect(await screen.findByText('Hiring Drive')).toBeInTheDocument()
     expect(queries).toEqual(['limit=20&offset=20'])
     expect(screen.getByText('Showing 21–21 of 21')).toBeInTheDocument()
+  })
+})
+
+describe('ProgramsPage status filter', () => {
+  const statusFilter = () => screen.getByRole('combobox', { name: 'Status' })
+
+  it('filters by the picked status from the first page', async () => {
+    const queries = mockPrograms((url) => (url.searchParams.get('status') === 'ACTIVE' ? [marketing] : [marketing, hiring]))
+    renderSignedIn('/programs?offset=20')
+    await screen.findByText('Hiring Drive')
+    expect(statusFilter()).toHaveTextContent('All statuses')
+
+    await userEvent.click(statusFilter())
+    await userEvent.click(await screen.findByRole('option', { name: 'Active' }))
+
+    await waitFor(() => expect(screen.queryByText('Hiring Drive')).not.toBeInTheDocument())
+    expect(currentUrl()).toBe('/programs?status=ACTIVE')
+    expect(queries).toEqual(['limit=20&offset=20', 'status=ACTIVE&limit=20&offset=0'])
+  })
+
+  it('requests the status and page in the URL', async () => {
+    const queries = mockPrograms(() =>
+      HttpResponse.json({
+        data: [{ ...hiring, status: 'COMPLETED', completedAt: '2026-10-19T08:00:00.000Z' }],
+        meta: { total: 21, limit: 20, offset: 20 },
+      }),
+    )
+    renderSignedIn('/programs?status=COMPLETED&offset=20')
+    expect(await screen.findByText('Hiring Drive')).toBeInTheDocument()
+    expect(queries).toEqual(['status=COMPLETED&limit=20&offset=20'])
+    expect(statusFilter()).toHaveTextContent('Completed')
+  })
+
+  it('says when no program has the status, and clears the filter', async () => {
+    const queries = mockPrograms((url) => (url.searchParams.has('status') ? [] : [marketing]))
+    renderSignedIn('/programs?status=COMPLETED', { role: 'MANAGER' })
+
+    expect(await screen.findByText('No completed programs')).toBeInTheDocument()
+    // The filter row's Clear filter, and the empty state's.
+    const clear = screen.getAllByRole('button', { name: 'Clear filter' })
+    expect(clear).toHaveLength(2)
+    await userEvent.click(clear[1])
+
+    expect(await screen.findByText('Marketing Research')).toBeInTheDocument()
+    expect(currentUrl()).toBe('/programs')
+    expect(queries).toEqual(['status=COMPLETED&limit=20&offset=0', 'limit=20&offset=0'])
+    expect(screen.queryByRole('button', { name: 'Clear filter' })).not.toBeInTheDocument()
+  })
+
+  it('clears the filter after creating a program the filter would hide', async () => {
+    mockTeams(() => [design, research])
+    mockPrograms((url) => (url.searchParams.get('status') === 'ACTIVE' ? [marketing] : [hiring, marketing]))
+    mockCreate(() => createdResponse(hiring))
+    renderSignedIn('/programs?status=ACTIVE', { me: { teamId: research.id } })
+    await screen.findByText('Marketing Research')
+    const dialog = await openCreateDialog()
+
+    await waitFor(() => expect(ownerSelect(dialog)).toHaveTextContent('Research'))
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Hiring Drive')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create program' }))
+
+    await waitFor(() => expect(currentUrl()).toBe('/programs'))
+    expect(await screen.findByText('Hiring Drive')).toBeInTheDocument()
+  })
+
+  it('keeps the filter after creating a program with that status', async () => {
+    mockTeams(() => [design, research])
+    mockPrograms(() => [marketing])
+    mockCreate(() => createdResponse({ ...hiring, status: 'ACTIVE' }))
+    renderSignedIn('/programs?status=ACTIVE&offset=20', { me: { teamId: research.id } })
+    await screen.findByText('Marketing Research')
+    const dialog = await openCreateDialog()
+
+    await waitFor(() => expect(ownerSelect(dialog)).toHaveTextContent('Research'))
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Hiring Drive')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create program' }))
+
+    await waitFor(() => expect(currentUrl()).toBe('/programs?status=ACTIVE'))
   })
 })
 

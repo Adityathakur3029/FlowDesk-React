@@ -40,6 +40,21 @@ export const TONE_SOLID_CLASSES: Record<Tone, string> = {
   slate: 'bg-slate-500',
 }
 
+// Chart marks and their legend dots (Overview, spec 14). The status tones were validated with the dataviz
+// checker in the Overview's segment order (violet, amber, blue, green, red): light on the white card with the
+// 500s; dark on the dark card, where amber and green step to 600 to stay inside the lightness band.
+// sky, orange and slate aren't charted yet and haven't been validated.
+export const TONE_CHART_CLASSES: Record<Tone, string> = {
+  violet: 'bg-violet-500',
+  blue: 'bg-blue-500',
+  amber: 'bg-amber-500 dark:bg-amber-600',
+  green: 'bg-emerald-500 dark:bg-emerald-600',
+  red: 'bg-red-500',
+  sky: 'bg-sky-500',
+  orange: 'bg-orange-500',
+  slate: 'bg-slate-400 dark:bg-slate-600',
+}
+
 // An icon on the page background (priorities).
 export const TONE_TEXT_CLASSES: Record<Tone, string> = {
   violet: 'text-violet-600 dark:text-violet-400',

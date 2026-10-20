@@ -8,8 +8,18 @@ import { Button } from '@/components/ui/button'
 import { useTeamDirectory, type TeamDirectory } from '@/features/teams'
 import { usePrograms } from '../api'
 import { CreateProgramDialog } from '../components/CreateProgramDialog'
+import { ProgramFilters } from '../components/ProgramFilters'
 import { ProgramTable } from '../components/ProgramTable'
-import { parseProgramOffset, PROGRAM_PAGE_SIZE, toProgramListParams, toProgramSearchParams } from '../searchParams'
+import { PROGRAM_STATUS_LABELS } from '../programStatus'
+import {
+  DEFAULT_PROGRAM_SEARCH,
+  parseProgramSearch,
+  PROGRAM_PAGE_SIZE,
+  toProgramListParams,
+  toProgramSearchParams,
+  type ProgramSearch,
+} from '../searchParams'
+import type { Program } from '../types'
 
 // UX hint only (POST /programs allows ADMIN or MANAGER); a 403 is still handled in the dialog.
 const CREATE_PROGRAM_ROLES = ['ADMIN', 'MANAGER'] as const
@@ -17,13 +27,16 @@ const CREATE_PROGRAM_ROLES = ['ADMIN', 'MANAGER'] as const
 export function ProgramsPage() {
   const canCreate = useHasRole(CREATE_PROGRAM_ROLES)
   const [searchParams, setSearchParams] = useSearchParams()
-  const offset = parseProgramOffset(searchParams)
-  const programs = usePrograms(toProgramListParams(offset))
+  const search = parseProgramSearch(searchParams)
+  const programs = usePrograms(toProgramListParams(search))
   const directory = useTeamDirectory()
-  const goTo = (next: number) => setSearchParams(toProgramSearchParams(next))
-  // The list is newest first, so a new program is the first row of page 1.
-  const showNewest = () => {
-    if (offset > 0) goTo(0)
+
+  // Each change pushes a history entry, so Back undoes it.
+  const updateSearch = (next: ProgramSearch) => setSearchParams(toProgramSearchParams(next))
+  // The list is newest first, so a new program is the first row of page 1, unless the status filter hides it.
+  const showNew = (program: Program) => {
+    const status = search.status === program.status ? search.status : undefined
+    if (search.offset > 0 || status !== search.status) updateSearch({ status, offset: 0 })
   }
 
   return (
@@ -31,15 +44,17 @@ export function ProgramsPage() {
       <PageHeader
         title="Programs"
         description="Each program groups related tasks and is owned by a team."
-        actions={canCreate && <CreateProgramDialog onCreated={showNewest} />}
+        actions={canCreate && <CreateProgramDialog onCreated={showNew} />}
       />
+      <ProgramFilters search={search} onChange={updateSearch} />
       <ProgramsContent
         query={programs}
+        search={search}
         teams={directory.data}
         teamsLoading={directory.isPending}
         canCreate={canCreate}
-        onOffsetChange={goTo}
-        onCreated={showNewest}
+        onSearchChange={updateSearch}
+        onCreated={showNew}
       />
     </>
   )
@@ -47,14 +62,15 @@ export function ProgramsPage() {
 
 interface ProgramsContentProps {
   query: ReturnType<typeof usePrograms>
+  search: ProgramSearch
   teams?: TeamDirectory
   teamsLoading: boolean
   canCreate: boolean
-  onOffsetChange: (offset: number) => void
-  onCreated: () => void
+  onSearchChange: (search: ProgramSearch) => void
+  onCreated: (program: Program) => void
 }
 
-function ProgramsContent({ query, teams, teamsLoading, canCreate, onOffsetChange, onCreated }: ProgramsContentProps) {
+function ProgramsContent({ query, search, teams, teamsLoading, canCreate, onSearchChange, onCreated }: ProgramsContentProps) {
   if (query.isPending) return <ProgramTable />
 
   if (query.isError) {
@@ -72,8 +88,20 @@ function ProgramsContent({ query, teams, teamsLoading, canCreate, onOffsetChange
           title="This page is empty"
           description="There are fewer programs than this page needs."
           action={
-            <Button type="button" variant="outline" onClick={() => onOffsetChange(0)}>
+            <Button type="button" variant="outline" onClick={() => onSearchChange({ ...search, offset: 0 })}>
               Go to first page
+            </Button>
+          }
+        />
+      )
+    }
+    if (search.status) {
+      return (
+        <EmptyState
+          title={`No ${PROGRAM_STATUS_LABELS[search.status].toLowerCase()} programs`}
+          action={
+            <Button type="button" variant="outline" onClick={() => onSearchChange(DEFAULT_PROGRAM_SEARCH)}>
+              Clear filter
             </Button>
           }
         />
@@ -95,7 +123,7 @@ function ProgramsContent({ query, teams, teamsLoading, canCreate, onOffsetChange
         total={meta.total}
         pageSize={data.length}
         disabled={query.isPlaceholderData}
-        onOffsetChange={onOffsetChange}
+        onOffsetChange={(offset) => onSearchChange({ ...search, offset })}
       />
     </div>
   )

@@ -1663,6 +1663,8 @@ export interface paths {
                          *           "status": "ACTIVE",
                          *           "startDate": "2026-10-01",
                          *           "endDate": "2026-12-31",
+                         *           "completedAt": null,
+                         *           "cancelledAt": null,
                          *           "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *         }
                          *       ],
@@ -1708,6 +1710,8 @@ export interface paths {
          *     `ownerTeamId` is required: every program has exactly one owner team, which must be an active team (see `GET /teams`). The owner team is informational for now and doesn't restrict who can work on the program.
          *
          *     `startDate` and `endDate` are optional `YYYY-MM-DD` dates (omit or send null to leave them unset). `endDate` must be on or after `startDate` when both are set (400 `INVALID_DATE_RANGE`); past dates are allowed.
+         *
+         *     `completedAt` / `cancelledAt` follow `status`: entering `COMPLETED` or `CANCELLED` sets the matching one to now, leaving it clears it, and sending the current status again keeps the existing time. They can't be sent.
          *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
@@ -1758,6 +1762,8 @@ export interface paths {
                          *         "status": "ACTIVE",
                          *         "startDate": "2026-10-01",
                          *         "endDate": "2026-12-31",
+                         *         "completedAt": null,
+                         *         "cancelledAt": null,
                          *         "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *       }
                          *     }
@@ -1846,6 +1852,8 @@ export interface paths {
                          *         "status": "ACTIVE",
                          *         "startDate": "2026-10-01",
                          *         "endDate": "2026-12-31",
+                         *         "completedAt": null,
+                         *         "cancelledAt": null,
                          *         "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *       }
                          *     }
@@ -1965,6 +1973,8 @@ export interface paths {
          * Update a program
          * @description Updates any of `name`, `description` (null clears it), `status`, `startDate` and `endDate` (null clears either), and `ownerTeamId` (moves ownership to another active team; it can't be null). At least one field is required. The date range is checked on the **merged** values: for example, sending only an `endDate` before the program's existing `startDate` returns 400 `INVALID_DATE_RANGE`. `key` is immutable: sending it returns 400. Any status can move to any other.
          *
+         *     `completedAt` / `cancelledAt` follow `status`: entering `COMPLETED` or `CANCELLED` sets the matching one to now, leaving it clears it, and sending the current status again keeps the existing time. They can't be sent.
+         *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
@@ -2012,6 +2022,8 @@ export interface paths {
                          *         "status": "ON_HOLD",
                          *         "startDate": "2026-10-01",
                          *         "endDate": "2027-01-31",
+                         *         "completedAt": null,
+                         *         "cancelledAt": null,
                          *         "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
                          *       }
                          *     }
@@ -3761,6 +3773,321 @@ export interface paths {
         };
         trace?: never;
     };
+    "/reports/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Organisation overview for a date range
+         * @description Organisation-wide numbers for a date range, for the leadership Overview page. Computed on every request, in SQL, from one consistent snapshot.
+         *
+         *     **Period.** `from` and `to` are UTC calendar dates, both inclusive: the period is `[from 00:00Z, to + 1 day 00:00Z)`. `to` may be in the future and isn't clamped (future buckets are zero). `previousPeriod` has the same number of days and ends the day before `from`. `asOf` is today's UTC date; overdue and at-risk compare against it.
+         *
+         *     **Definitions.**
+         *     - *In-scope program*: not deleted, created before the period ended, and not finished before it started (finished = `completedAt` or `cancelledAt`).
+         *     - *Open task*: status isn't DONE (DEPENDENT counts as open). *Overdue*: open with a due date before `asOf`; tasks without a due date are never overdue.
+         *     - *Completed in a window*: DONE now with `completedAt` in the window. `completedAt` is the **last** move to DONE, so a task finished, reopened and finished again counts once.
+         *     - *On time*: completed in the period with a due date, and the completion date (UTC) on or before it. Tasks without a due date are left out of both `tasksCompletedOnTime` and `tasksCompletedWithDueDate`.
+         *     - *At risk*: an in-scope program with an `endDate` before `asOf` that isn't COMPLETED or CANCELLED.
+         *
+         *     **Two task scopes.** Event counts (`tasksCreated*`, `tasksCompleted*`, `trend`) count every live task in every non-deleted program, so the previous-period deltas compare like with like. Snapshot and breakdown counts (`openTasks`, `overdueTasks`, `tasksByStatus`, `openTasksByPriority`, `teams`, `programs`) count only tasks of in-scope programs. The sums of `programs[].tasksCompletedInPeriod` and `teams[].tasksCompleted` can therefore be lower than `totals.tasksCompleted`, but only when tasks were completed in a program that had already finished before the period. `trend` sums to the created/completed totals, and `openTasksByPriority`, `programs[].openTasks` and `teams[].openTasks` each sum to `totals.openTasks`.
+         *
+         *     **Statuses are current.** There's no status history, so `programsByStatus` and `tasksByStatus` use each row's status now, and the open/overdue numbers are as of now even when `to` is in the past.
+         *
+         *     **Trend.** Weekly (ISO weeks, Monday-Sunday) when the period is at most 92 days, otherwise monthly; in UTC. Buckets cover the period exactly: the first starts on `from` and the last ends on `to`, so either may be partial.
+         *
+         *     Soft-deleted programs and tasks are excluded everywhere. An empty organisation or range returns zeros, every status and priority key, empty `teams` and `programs`, and the trend buckets.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description First day of the period, YYYY-MM-DD (UTC), inclusive. Required. */
+                    from: string;
+                    /** @description Last day of the period, YYYY-MM-DD (UTC), inclusive. Required. On or after `from`; may be in the future. */
+                    to: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The overview report */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "period": {
+                         *           "from": "2026-07-22",
+                         *           "to": "2026-10-20",
+                         *           "days": 91,
+                         *           "granularity": "week"
+                         *         },
+                         *         "previousPeriod": {
+                         *           "from": "2026-04-22",
+                         *           "to": "2026-07-21",
+                         *           "days": 91
+                         *         },
+                         *         "asOf": "2026-10-20",
+                         *         "totals": {
+                         *           "programs": 4,
+                         *           "programsCompleted": 1,
+                         *           "programsAtRisk": 1,
+                         *           "tasksCreated": 58,
+                         *           "tasksCreatedPrevious": 41,
+                         *           "tasksCompleted": 37,
+                         *           "tasksCompletedPrevious": 30,
+                         *           "tasksCompletedWithDueDate": 29,
+                         *           "tasksCompletedOnTime": 22,
+                         *           "openTasks": 44,
+                         *           "overdueTasks": 7
+                         *         },
+                         *         "programsByStatus": {
+                         *           "PLANNED": 1,
+                         *           "ACTIVE": 2,
+                         *           "ON_HOLD": 0,
+                         *           "COMPLETED": 1,
+                         *           "CANCELLED": 0
+                         *         },
+                         *         "tasksByStatus": {
+                         *           "DISCUSSION": 9,
+                         *           "ON_HOLD": 4,
+                         *           "IN_PROGRESS": 21,
+                         *           "DONE": 37,
+                         *           "DEPENDENT": 10
+                         *         },
+                         *         "openTasksByPriority": {
+                         *           "HIGHEST": 3,
+                         *           "HIGH": 11,
+                         *           "MEDIUM": 20,
+                         *           "LOW": 8,
+                         *           "LOWEST": 2
+                         *         },
+                         *         "trend": [
+                         *           {
+                         *             "start": "2026-07-22",
+                         *             "end": "2026-07-26",
+                         *             "created": 3,
+                         *             "completed": 1
+                         *           },
+                         *           {
+                         *             "start": "2026-07-27",
+                         *             "end": "2026-08-02",
+                         *             "created": 4,
+                         *             "completed": 2
+                         *           },
+                         *           {
+                         *             "start": "2026-08-03",
+                         *             "end": "2026-08-09",
+                         *             "created": 5,
+                         *             "completed": 3
+                         *           },
+                         *           {
+                         *             "start": "2026-08-10",
+                         *             "end": "2026-08-16",
+                         *             "created": 4,
+                         *             "completed": 2
+                         *           },
+                         *           {
+                         *             "start": "2026-08-17",
+                         *             "end": "2026-08-23",
+                         *             "created": 6,
+                         *             "completed": 3
+                         *           },
+                         *           {
+                         *             "start": "2026-08-24",
+                         *             "end": "2026-08-30",
+                         *             "created": 3,
+                         *             "completed": 2
+                         *           },
+                         *           {
+                         *             "start": "2026-08-31",
+                         *             "end": "2026-09-06",
+                         *             "created": 4,
+                         *             "completed": 3
+                         *           },
+                         *           {
+                         *             "start": "2026-09-07",
+                         *             "end": "2026-09-13",
+                         *             "created": 5,
+                         *             "completed": 3
+                         *           },
+                         *           {
+                         *             "start": "2026-09-14",
+                         *             "end": "2026-09-20",
+                         *             "created": 4,
+                         *             "completed": 2
+                         *           },
+                         *           {
+                         *             "start": "2026-09-21",
+                         *             "end": "2026-09-27",
+                         *             "created": 5,
+                         *             "completed": 4
+                         *           },
+                         *           {
+                         *             "start": "2026-09-28",
+                         *             "end": "2026-10-04",
+                         *             "created": 4,
+                         *             "completed": 3
+                         *           },
+                         *           {
+                         *             "start": "2026-10-05",
+                         *             "end": "2026-10-11",
+                         *             "created": 5,
+                         *             "completed": 4
+                         *           },
+                         *           {
+                         *             "start": "2026-10-12",
+                         *             "end": "2026-10-18",
+                         *             "created": 4,
+                         *             "completed": 3
+                         *           },
+                         *           {
+                         *             "start": "2026-10-19",
+                         *             "end": "2026-10-20",
+                         *             "created": 2,
+                         *             "completed": 2
+                         *           }
+                         *         ],
+                         *         "teams": [
+                         *           {
+                         *             "teamId": "7a1d2c3b-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                         *             "name": "Operations",
+                         *             "programs": 1,
+                         *             "tasksCompleted": 10,
+                         *             "openTasks": 18,
+                         *             "overdueTasks": 3
+                         *           },
+                         *           {
+                         *             "teamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23",
+                         *             "name": "Research",
+                         *             "programs": 2,
+                         *             "tasksCompleted": 27,
+                         *             "openTasks": 18,
+                         *             "overdueTasks": 4
+                         *           },
+                         *           {
+                         *             "teamId": null,
+                         *             "name": null,
+                         *             "programs": 1,
+                         *             "tasksCompleted": 0,
+                         *             "openTasks": 8,
+                         *             "overdueTasks": 0
+                         *           }
+                         *         ],
+                         *         "programs": [
+                         *           {
+                         *             "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *             "key": "MKT",
+                         *             "name": "Marketing Research",
+                         *             "status": "ACTIVE",
+                         *             "ownerTeam": {
+                         *               "id": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23",
+                         *               "name": "Research"
+                         *             },
+                         *             "startDate": "2026-07-01",
+                         *             "endDate": "2026-10-15",
+                         *             "completedAt": null,
+                         *             "tasksTotal": 40,
+                         *             "tasksDone": 22,
+                         *             "tasksCompletedInPeriod": 18,
+                         *             "openTasks": 18,
+                         *             "overdueTasks": 4,
+                         *             "atRisk": true
+                         *           },
+                         *           {
+                         *             "id": "c2d3e4f5-a6b7-4c8d-9e0f-1a2b3c4d5e6f",
+                         *             "key": "OPS",
+                         *             "name": "Operations Revamp",
+                         *             "status": "ACTIVE",
+                         *             "ownerTeam": {
+                         *               "id": "7a1d2c3b-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                         *               "name": "Operations"
+                         *             },
+                         *             "startDate": "2026-08-01",
+                         *             "endDate": "2026-12-31",
+                         *             "completedAt": null,
+                         *             "tasksTotal": 30,
+                         *             "tasksDone": 12,
+                         *             "tasksCompletedInPeriod": 10,
+                         *             "openTasks": 18,
+                         *             "overdueTasks": 3,
+                         *             "atRisk": false
+                         *           },
+                         *           {
+                         *             "id": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+                         *             "key": "ONB",
+                         *             "name": "Onboarding Guide",
+                         *             "status": "PLANNED",
+                         *             "ownerTeam": null,
+                         *             "startDate": null,
+                         *             "endDate": null,
+                         *             "completedAt": null,
+                         *             "tasksTotal": 8,
+                         *             "tasksDone": 0,
+                         *             "tasksCompletedInPeriod": 0,
+                         *             "openTasks": 8,
+                         *             "overdueTasks": 0,
+                         *             "atRisk": false
+                         *           },
+                         *           {
+                         *             "id": "1e2d3c4b-5a69-4788-9a0b-c1d2e3f4a5b6",
+                         *             "key": "SRV",
+                         *             "name": "Survey Program",
+                         *             "status": "COMPLETED",
+                         *             "ownerTeam": {
+                         *               "id": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23",
+                         *               "name": "Research"
+                         *             },
+                         *             "startDate": "2026-06-01",
+                         *             "endDate": "2026-09-30",
+                         *             "completedAt": "2026-09-29T16:20:00.000Z",
+                         *             "tasksTotal": 9,
+                         *             "tasksDone": 9,
+                         *             "tasksCompletedInPeriod": 9,
+                         *             "openTasks": 0,
+                         *             "overdueTasks": 0,
+                         *             "atRisk": false
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["OverviewReportResponse"];
+                    };
+                };
+                /** @description `Validation failed`: `from` or `to` is missing, repeated, or not a real `YYYY-MM-DD` date (`details[].path` is `from` or `to`). `INVALID_DATE_RANGE`: `from` is after `to`. `DATE_RANGE_TOO_LONG`: the range is more than 1096 days, both ends included. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3775,7 +4102,7 @@ export interface components {
             /** @description Human-readable error message */
             error: string;
             /**
-             * @description Machine-readable error code, present on errors that have one: INVALID_INVITE_TOKEN, INVITE_REVOKED, INVITE_ALREADY_ACCEPTED, INVITE_PENDING, INVITE_EXPIRED, EMPLOYEE_EXISTS, EMAIL_DELIVERY_FAILED, AUTH_REQUIRED, INVALID_AUTH_TOKEN, FORBIDDEN, INVALID_GOOGLE_TOKEN, GOOGLE_EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, NOT_INVITED, ACCOUNT_INACTIVE, GOOGLE_ACCOUNT_MISMATCH, GOOGLE_UNAVAILABLE, PROGRAM_KEY_EXISTS, ASSIGNEE_NOT_FOUND, INVALID_DATE_RANGE, TASK_BLOCKED, TASK_DONE, DEPENDENCY_TASK_NOT_FOUND, DEPENDENCY_OTHER_PROGRAM, SELF_DEPENDENCY, DEPENDENCY_EXISTS, DEPENDENCY_LIMIT_REACHED, DEPENDENCY_CYCLE, PARENT_COMMENT_NOT_FOUND, PARENT_TARGET_MISMATCH, NESTED_REPLY, TOO_MANY_MENTIONS, MENTION_NOT_FOUND, TEAM_NAME_EXISTS, TEAM_OWNS_PROGRAMS, OWNER_TEAM_NOT_FOUND, SELF_LOCKOUT, LAST_ADMIN
+             * @description Machine-readable error code, present on errors that have one: INVALID_INVITE_TOKEN, INVITE_REVOKED, INVITE_ALREADY_ACCEPTED, INVITE_PENDING, INVITE_EXPIRED, EMPLOYEE_EXISTS, EMAIL_DELIVERY_FAILED, AUTH_REQUIRED, INVALID_AUTH_TOKEN, FORBIDDEN, INVALID_GOOGLE_TOKEN, GOOGLE_EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, NOT_INVITED, ACCOUNT_INACTIVE, GOOGLE_ACCOUNT_MISMATCH, GOOGLE_UNAVAILABLE, PROGRAM_KEY_EXISTS, ASSIGNEE_NOT_FOUND, INVALID_DATE_RANGE, TASK_BLOCKED, TASK_DONE, DEPENDENCY_TASK_NOT_FOUND, DEPENDENCY_OTHER_PROGRAM, SELF_DEPENDENCY, DEPENDENCY_EXISTS, DEPENDENCY_LIMIT_REACHED, DEPENDENCY_CYCLE, PARENT_COMMENT_NOT_FOUND, PARENT_TARGET_MISMATCH, NESTED_REPLY, TOO_MANY_MENTIONS, MENTION_NOT_FOUND, TEAM_NAME_EXISTS, TEAM_OWNS_PROGRAMS, OWNER_TEAM_NOT_FOUND, SELF_LOCKOUT, LAST_ADMIN, DATE_RANGE_TOO_LONG
              * @example INVITE_EXPIRED
              */
             code?: string;
@@ -4030,6 +4357,8 @@ export interface components {
          *       "status": "ACTIVE",
          *       "startDate": "2026-10-01",
          *       "endDate": "2026-12-31",
+         *       "completedAt": null,
+         *       "cancelledAt": null,
          *       "ownerTeamId": "3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23"
          *     }
          */
@@ -4057,6 +4386,16 @@ export interface components {
              * @description Planned end (YYYY-MM-DD), on or after startDate; null when not set
              */
             endDate: string | null;
+            /**
+             * Format: date-time
+             * @description When the program last became COMPLETED; null unless status is COMPLETED. Set by the server from `status`.
+             */
+            completedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the program last became CANCELLED; null unless status is CANCELLED. Set by the server from `status`.
+             */
+            cancelledAt: string | null;
             /**
              * Format: uuid
              * @description Id of the team that owns the program. Always set on programs created through the API; null only on programs created before teams existed.
@@ -4424,6 +4763,193 @@ export interface components {
         CommentListResponse: {
             data: components["schemas"]["Comment"][];
             meta: components["schemas"]["PaginationMeta"];
+        };
+        ReportPeriod: {
+            /**
+             * Format: date
+             * @description First day, inclusive (UTC)
+             */
+            from: string;
+            /**
+             * Format: date
+             * @description Last day, inclusive (UTC)
+             */
+            to: string;
+            /** @description Number of days, both ends included */
+            days: number;
+            /**
+             * @description Trend bucket size: `week` when the period is at most 92 days, otherwise `month`
+             * @enum {string}
+             */
+            granularity: "week" | "month";
+        };
+        /** @description The same number of days, immediately before the period. Used for the `*Previous` deltas. */
+        ReportPreviousPeriod: {
+            /**
+             * Format: date
+             * @description First day, inclusive
+             */
+            from: string;
+            /**
+             * Format: date
+             * @description Last day, inclusive: the day before `period.from`
+             */
+            to: string;
+            /** @description Same as `period.days` */
+            days: number;
+        };
+        OverviewTotals: {
+            /** @description In-scope programs: active, created before the period ended, and not completed/cancelled before it started */
+            programs: number;
+            /** @description In-scope programs that are COMPLETED now with `completedAt` in the period (a program reopened since doesn't count) */
+            programsCompleted: number;
+            /** @description In-scope programs with an `endDate` before `asOf` that aren't COMPLETED or CANCELLED. Programs without an endDate are never at risk. */
+            programsAtRisk: number;
+            /** @description Tasks created in the period, across every active program (event count) */
+            tasksCreated: number;
+            /** @description Tasks created in the previous period, across every active program */
+            tasksCreatedPrevious: number;
+            /** @description Tasks DONE now whose `completedAt` (last move to DONE) is in the period, across every active program (event count) */
+            tasksCompleted: number;
+            /** @description The same for the previous period */
+            tasksCompletedPrevious: number;
+            /** @description Of `tasksCompleted`, those with a due date: the denominator of the on-time rate */
+            tasksCompletedWithDueDate: number;
+            /** @description Of `tasksCompletedWithDueDate`, those whose completion date (UTC) is on or before the due date */
+            tasksCompletedOnTime: number;
+            /** @description Tasks of in-scope programs that aren't DONE, as of now (snapshot) */
+            openTasks: number;
+            /** @description Of `openTasks`, those with a due date before `asOf` */
+            overdueTasks: number;
+        };
+        /** @description In-scope programs by **current** status (there's no status history). Sums to `totals.programs`. */
+        ProgramsByStatus: {
+            /** @description In-scope programs PLANNED now */
+            PLANNED: number;
+            /** @description In-scope programs ACTIVE now */
+            ACTIVE: number;
+            /** @description In-scope programs ON_HOLD now */
+            ON_HOLD: number;
+            /** @description In-scope programs COMPLETED now */
+            COMPLETED: number;
+            /** @description In-scope programs CANCELLED now */
+            CANCELLED: number;
+        };
+        /** @description Tasks of in-scope programs that were live in the period (created before it ended, and open or completed on/after `from`), by **current** status. */
+        TasksByStatus: {
+            /** @description In-scope tasks in DISCUSSION now */
+            DISCUSSION: number;
+            /** @description In-scope tasks ON_HOLD now */
+            ON_HOLD: number;
+            /** @description In-scope tasks IN_PROGRESS now */
+            IN_PROGRESS: number;
+            /** @description In-scope tasks DONE now (completed on or after `period.from`) */
+            DONE: number;
+            /** @description In-scope tasks DEPENDENT now */
+            DEPENDENT: number;
+        };
+        /** @description `openTasks` by priority, as of now. Sums to `totals.openTasks`. */
+        OpenTasksByPriority: {
+            /** @description Open HIGHEST tasks */
+            HIGHEST: number;
+            /** @description Open HIGH tasks */
+            HIGH: number;
+            /** @description Open MEDIUM tasks */
+            MEDIUM: number;
+            /** @description Open LOW tasks */
+            LOW: number;
+            /** @description Open LOWEST tasks */
+            LOWEST: number;
+        };
+        /** @description One ISO week (Monday-Sunday) or calendar month, in UTC, clipped to the period. Buckets cover the period exactly and in order, and are present even when zero. */
+        TrendBucket: {
+            /**
+             * Format: date
+             * @description First day of the bucket, inclusive. The first bucket starts on `period.from`.
+             */
+            start: string;
+            /**
+             * Format: date
+             * @description Last day of the bucket, inclusive. The last bucket ends on `period.to`.
+             */
+            end: string;
+            /** @description Tasks created in the bucket (same scope as `totals.tasksCreated`) */
+            created: number;
+            /** @description Tasks completed in the bucket (same scope as `totals.tasksCompleted`) */
+            completed: number;
+        };
+        /** @description Rolled up by program owner team. Teams owning no in-scope program are left out. */
+        TeamReportRow: {
+            /**
+             * Format: uuid
+             * @description null for the row grouping programs with no owner team (created before teams existed) or a deleted one
+             */
+            teamId: string | null;
+            /** @description Team name; null on the no-team row */
+            name: string | null;
+            /** @description In-scope programs the team owns */
+            programs: number;
+            /** @description Tasks completed in the period in those programs */
+            tasksCompleted: number;
+            /** @description Open tasks in those programs, as of now */
+            openTasks: number;
+            /** @description Overdue tasks in those programs, as of now */
+            overdueTasks: number;
+        };
+        ProgramReportRow: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            name: string;
+            status: components["schemas"]["ProgramStatus"];
+            /** @description null when the program has no owner team or it was deleted */
+            ownerTeam: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
+            /** Format: date */
+            startDate: string | null;
+            /** Format: date */
+            endDate: string | null;
+            /**
+             * Format: date-time
+             * @description When the program became COMPLETED; null unless COMPLETED
+             */
+            completedAt: string | null;
+            /** @description All live tasks in the program */
+            tasksTotal: number;
+            /** @description Tasks DONE now */
+            tasksDone: number;
+            /** @description Tasks completed in the period */
+            tasksCompletedInPeriod: number;
+            /** @description Tasks not DONE, as of now */
+            openTasks: number;
+            /** @description Open tasks with a due date before `asOf` */
+            overdueTasks: number;
+            /** @description `endDate` before `asOf` and status not COMPLETED/CANCELLED */
+            atRisk: boolean;
+        };
+        OverviewReport: {
+            period: components["schemas"]["ReportPeriod"];
+            previousPeriod: components["schemas"]["ReportPreviousPeriod"];
+            /**
+             * Format: date
+             * @description Today's UTC date when the report was built. Overdue and at-risk compare against it, not against `period.to`.
+             */
+            asOf: string;
+            totals: components["schemas"]["OverviewTotals"];
+            programsByStatus: components["schemas"]["ProgramsByStatus"];
+            tasksByStatus: components["schemas"]["TasksByStatus"];
+            openTasksByPriority: components["schemas"]["OpenTasksByPriority"];
+            trend: components["schemas"]["TrendBucket"][];
+            /** @description Ordered by name (ignoring case), then teamId; the no-team row (teamId null) last */
+            teams: components["schemas"]["TeamReportRow"][];
+            /** @description Every in-scope program, unpaginated. Ordered: atRisk first, then overdueTasks descending, then name (ignoring case), then id. */
+            programs: components["schemas"]["ProgramReportRow"][];
+        };
+        OverviewReportResponse: {
+            data: components["schemas"]["OverviewReport"];
         };
         CreateEmployeeRequest: {
             /**

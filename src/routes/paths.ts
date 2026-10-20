@@ -6,6 +6,7 @@ export const paths = {
   people: '/people',
   teams: '/teams',
   programs: '/programs',
+  overview: '/overview', // spec 14
   program: '/programs/:programId',
   task: '/programs/:programId/tasks/:taskRef',
   acceptInvite: '/invites/accept', // spec 05

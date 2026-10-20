@@ -29,6 +29,8 @@ const marketing: Program = {
   startDate: '2026-10-01',
   endDate: '2026-12-31',
   ownerTeamId: research.id,
+  completedAt: null,
+  cancelledAt: null,
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' })

@@ -21,6 +21,8 @@ const marketing: Program = {
   startDate: null,
   endDate: null,
   ownerTeamId: '3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23',
+  completedAt: null,
+  cancelledAt: null,
 }
 const jane: EmployeeSummary = { id: janeDoe.id, name: janeDoe.name, emailId: janeDoe.emailId }
 const ravi: EmployeeSummary = { id: 'c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f', name: 'Ravi Kumar', emailId: 'ravi.kumar@saajha.org' }

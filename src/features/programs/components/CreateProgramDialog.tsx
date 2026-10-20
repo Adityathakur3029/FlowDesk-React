@@ -30,7 +30,7 @@ import { useCreateProgram } from '../api'
 import { suggestProgramKey } from '../programKey'
 import { programFields, PROGRAM_KEY_PATTERN, programSchema, type ProgramFormValues } from '../programSchema'
 import { PROGRAM_STATUSES, PROGRAM_STATUS_LABELS, PROGRAM_STATUS_TONES } from '../programStatus'
-import type { CreateProgramRequest } from '../types'
+import type { CreateProgramRequest, Program } from '../types'
 
 const defaultValues = (ownerTeamId: string): ProgramFormValues => ({
   name: '',
@@ -47,7 +47,7 @@ const END_BEFORE_START = 'The end date must be on or after the start date.'
 
 interface CreateProgramDialogProps {
   // Called after the program is created, e.g. to show the first page, where the newest program is.
-  onCreated?: () => void
+  onCreated?: (program: Program) => void
 }
 
 // Callers render this only for ADMIN and MANAGER. The backend still decides: a 403 shows here.
@@ -121,7 +121,7 @@ export function CreateProgramDialog({ onCreated }: CreateProgramDialogProps) {
           description: `Its tasks will be numbered ${program.key}-1, ${program.key}-2…`,
         })
         close()
-        onCreated?.()
+        onCreated?.(program)
       },
       onError: (error) => {
         // Coded errors carry no field details, so applyServerErrors would put them in the form alert.

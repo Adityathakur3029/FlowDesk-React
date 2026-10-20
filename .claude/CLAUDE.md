@@ -203,10 +203,10 @@ Keep this table in sync with the contract when the backend changes.
 6. **Member management**: employee list/detail (filters `role`, `teamId`, `includeInactive`, pagination), team membership.
 7. Then: teams → programs → tasks (dependencies, labels) → comments (replies, @mentions).
 
-## Known contract facts and gaps (audited 2026-10-17, updated 2026-10-19)
+## Known contract facts and gaps (audited 2026-10-17, updated 2026-10-20)
 
 Facts:
-- 37 operations across Health, Auth, Employees, Invites, Teams, Programs, Tasks and Comments (`PATCH /employees/{id}` added 2026-10-18). Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
+- 38 operations across Health, Auth, Employees, Invites, Teams, Programs, Tasks, Comments and Reports (`PATCH /employees/{id}` added 2026-10-18, `GET /reports/overview` 2026-10-20). Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
 - `GET /employees?q=` searches name or email (case-insensitive substring) and then orders by match quality instead of newest first. Use it for every people picker (team members, assignees, @mentions).
 - `PATCH /employees/{id}` finds inactive employees too (reactivation), but `GET /employees/{id}` returns 404 for them. Team changes go through `PUT`/`DELETE /teams/{teamId}/members/{employeeId}`, never the PATCH. `PUT` moves an employee out of any other team and needs an active employee.
 - Deactivating an employee ends their sessions (next request 401) and drops them from team member lists and `memberCount`, but they keep `teamId`. Roles are read from the DB on every request.
@@ -216,7 +216,8 @@ Facts:
 - `POST /invites/accept` only creates the employee. The user then signs in with Google separately. Error codes: `INVALID_INVITE_TOKEN`, `INVITE_REVOKED` (400), `INVITE_ALREADY_ACCEPTED`, `EMPLOYEE_EXISTS` (409), and **410** for an expired invite.
 - An employee created via `POST /employees` (no invite) **can't sign in** (`NOT_INVITED`), so prefer invites in the UI.
 - Tasks are addressed by `taskRef` (id or key such as `MKT-3`).
-- Programs have optional `startDate` / `endDate` (added 2026-10-19): calendar dates `YYYY-MM-DD`, null when unset, past dates allowed. End before start → 400 `INVALID_DATE_RANGE` (on `PATCH` the merged values are checked). Format them in UTC, or they show a day early west of UTC.
+- Programs have optional `startDate` / `endDate` (added 2026-10-19): calendar dates `YYYY-MM-DD`, null when unset, past dates allowed. End before start → 400 `INVALID_DATE_RANGE` (on `PATCH` the merged values are checked). Format them in UTC, or they show a day early west of UTC. `completedAt` / `cancelledAt` (added 2026-10-20) are set by the server when the status enters COMPLETED / CANCELLED, and cleared when it leaves.
+- `GET /reports/overview?from&to` (any active employee) returns the whole Overview in one call: totals with previous-period counts, current-status breakdowns, open tasks by priority, a weekly/monthly trend, and per-team and per-program rows. Dates are UTC and inclusive; more than 1096 days → 400 `DATE_RANGE_TOO_LONG`. Its scope rules (in-scope programs, event vs snapshot counts) are in the operation description. Render its numbers; don't recompute them.
 - Comment bodies are Markdown with mention tokens `@[Name](mention:<uuid>)`; render them escaped (no `dangerouslySetInnerHTML`) and show mentions with the current name from `mentions`. Program comment lists page **threads** (`meta.total` counts threads), each with all its replies.
 
 Gaps (report them and don't work around them; ask the backend before building the UI):
@@ -226,6 +227,7 @@ Gaps (report them and don't work around them; ask the backend before building th
 4. ~~The `POST /employees` 409 response has no documented `code`.~~ Closed 2026-10-18: it's `EMPLOYEE_EXISTS`.
 5. **`Employee` has only `teamId`, and `Program` only `ownerTeamId`, no team name.** The frontend loads every team (`useTeamDirectory`) to show names. A `team: { id, name } | null` / `ownerTeam` summary would remove that.
 6. **`Comment.author` / `CommentReply.author` and `Task.assignee` generate as non-nullable** (`allOf` + `nullable` in OpenAPI 3.0), but they're `null` on a tombstone / when unassigned. Check `isActive` before reading `author`, and check `assignee` for null. Backend fix: `nullable: true` next to the `allOf`, not inside it.
+7. ~~No reporting / aggregate endpoint.~~ Closed 2026-10-20: `GET /reports/overview` (spec 14).
 
 Tooling note: `openapi-typescript` marks request fields that have a `default` as required (`CreateTaskRequest.labels`, `dependsOn`, …). Send the contract default explicitly rather than casting.
 

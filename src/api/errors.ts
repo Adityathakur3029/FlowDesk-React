@@ -44,6 +44,7 @@ const BACKEND_ERROR_CODES = [
   'OWNER_TEAM_NOT_FOUND',
   'SELF_LOCKOUT',
   'LAST_ADMIN',
+  'DATE_RANGE_TOO_LONG',
 ] as const
 
 // NETWORK_ERROR is frontend-only (status 0): the request never got a response.
@@ -94,6 +95,8 @@ export const ERROR_MESSAGES: Record<KnownErrorCode, string | null> = {
   TEAM_OWNS_PROGRAMS: 'This team still owns programs. Move them to another team first.',
   SELF_LOCKOUT: "You can't change your own role or deactivate yourself.",
   LAST_ADMIN: 'There has to be at least one active admin. Make someone else an admin first.',
+  // GET /reports/overview: more than 1096 days, both ends included.
+  DATE_RANGE_TOO_LONG: 'The period can be at most three years.',
   NETWORK_ERROR: "Can't reach the FlowDesk server. Check your connection and try again.",
 }
 
