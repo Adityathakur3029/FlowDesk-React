@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { PeoplePage } from '@/features/employees/pages/PeoplePage'
 import { ProgramPage } from '@/features/programs/pages/ProgramPage'
 import { ProgramsPage } from '@/features/programs/pages/ProgramsPage'
+import { TaskPage } from '@/features/tasks/pages/TaskPage'
 import { TeamsPage } from '@/features/teams/pages/TeamsPage'
 import { paths } from './paths'
 
@@ -20,6 +21,7 @@ export function AppRoutes() {
           <Route path={paths.teams} element={<TeamsPage />} />
           <Route path={paths.programs} element={<ProgramsPage />} />
           <Route path={paths.program} element={<ProgramPage />} />
+          <Route path={paths.task} element={<TaskPage />} />
           {/* Inside the shell: only /login and /invites/accept are public, so a signed-out typo goes to login first. */}
           <Route path="*" element={<NotFoundState />} />
         </Route>

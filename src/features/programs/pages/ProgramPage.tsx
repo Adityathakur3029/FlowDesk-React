@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   ArrowLeft,
   CalendarCheck,
@@ -15,6 +14,7 @@ import {
 import { Link, useParams, useSearchParams } from 'react-router'
 import { isApiError } from '@/api/errors'
 import { useHasRole } from '@/auth/useAuth'
+import { Detail, EditableDetail, NotSet } from '@/components/data/DetailRow'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { NotFoundState } from '@/components/feedback/NotFoundState'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -25,23 +25,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProgramComments } from '@/features/comments'
 import { ProgramTasks } from '@/features/tasks'
 import { useTeamDirectory } from '@/features/teams'
+import { useInlineEdit } from '@/hooks/useInlineEdit'
 import { formatCalendarDate } from '@/lib/dates'
 import { TONE_DOT_CLASSES } from '@/lib/tones'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { useProgram } from '../api'
+import { DeleteProgramButton } from '../components/DeleteProgramButton'
 import { OwnerTeamName } from '../components/OwnerTeamName'
 import { ProgramFieldEditor } from '../components/ProgramFieldEditor'
 import { ProgramStatusBadge } from '../components/ProgramStatusBadge'
 import { ProgramStatusMenu } from '../components/ProgramStatusMenu'
 import { PROGRAM_STATUS_TONES } from '../programStatus'
 import type { Program } from '../types'
-import { useInlineEdit } from '../useInlineEdit'
 
 const timestampFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
-// PATCH /programs/{programId} (contract). UX only: the server still answers 403 to anyone else.
+// PATCH and DELETE /programs/{programId} (contract). UX only: the server still answers 403 to anyone else.
 const EDIT_PROGRAM_ROLES = ['ADMIN', 'MANAGER'] as const
+const DELETE_PROGRAM_ROLES = ['ADMIN'] as const
 
 // ?tab=comments selects Comments; anything else is Tasks, the default.
 type ProgramTab = 'tasks' | 'comments'
@@ -80,6 +82,7 @@ function BackToPrograms() {
 function ProgramView({ program }: { program: Program }) {
   const directory = useTeamDirectory()
   const canEdit = useHasRole(EDIT_PROGRAM_ROLES)
+  const canDelete = useHasRole(DELETE_PROGRAM_ROLES)
   const [searchParams, setSearchParams] = useSearchParams()
   const tab: ProgramTab = searchParams.get('tab') === COMMENTS_TAB ? 'comments' : 'tasks'
   // Only ?tab changes, so the Tasks tab's search, status and page survive a visit to Comments.
@@ -109,6 +112,11 @@ function ProgramView({ program }: { program: Program }) {
                 {canEdit ? <ProgramStatusMenu program={program} /> : <ProgramStatusBadge status={program.status} />}
               </div>
             </div>
+            {canDelete && (
+              <div className="shrink-0">
+                <DeleteProgramButton program={program} />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -273,59 +281,25 @@ interface DateDetailProps {
 }
 
 // A date row in Details. Editors click the date to change or clear it; the editor takes the full row width.
-function DateDetail({ program, field, icon: Icon, label, canEdit }: DateDetailProps) {
+function DateDetail({ program, field, icon, label, canEdit }: DateDetailProps) {
   const { editing, open, close, triggerRef } = useInlineEdit()
   const date = program[field]
-  const shown = date ? formatCalendarDate(date) : <NotSet />
 
   return (
-    <>
-      <dt className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" aria-hidden="true" />
-        {label}
-      </dt>
-      {editing ? (
-        <dd className="col-span-2">
-          <ProgramFieldEditor program={program} field={field} onClose={close} />
-        </dd>
-      ) : (
-        <dd className="min-w-0">
-          {canEdit ? (
-            <button
-              ref={triggerRef}
-              type="button"
-              onClick={open}
-              aria-label={`Edit ${label.toLowerCase()}, ${date ? formatCalendarDate(date) : 'not set'}`}
-              className="group/date -mx-1.5 -my-0.5 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {shown}
-              <Pencil
-                className="size-3.5 text-muted-foreground opacity-0 group-hover/date:opacity-100 group-focus-visible/date:opacity-100"
-                aria-hidden="true"
-              />
-            </button>
-          ) : (
-            shown
-          )}
-        </dd>
-      )}
-    </>
+    <EditableDetail
+      icon={icon}
+      label={label}
+      canEdit={canEdit}
+      editing={editing}
+      editor={<ProgramFieldEditor program={program} field={field} onClose={close} />}
+      onEdit={open}
+      editLabel={`Edit ${label.toLowerCase()}, ${date ? formatCalendarDate(date) : 'not set'}`}
+      triggerRef={triggerRef}
+    >
+      {date ? formatCalendarDate(date) : <NotSet />}
+    </EditableDetail>
   )
 }
-
-function Detail({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
-  return (
-    <>
-      <dt className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" aria-hidden="true" />
-        {label}
-      </dt>
-      <dd className="min-w-0 break-words">{children}</dd>
-    </>
-  )
-}
-
-const NotSet = () => <span className="text-muted-foreground">Not set</span>
 
 function ProgramPageSkeleton() {
   return (

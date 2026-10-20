@@ -353,3 +353,143 @@ describe('ProgramComments', () => {
     await waitFor(() => expect(calls.bodies).toEqual([{ body: 'Ask @Ravi Kumar' }]))
   })
 })
+
+describe('Editing and deleting comments', () => {
+  const COMMENT_PATH = `${COMMENTS_PATH}/:commentId`
+
+  function mockPatch(respond: () => Response = () => HttpResponse.json({ data: comment() })) {
+    const calls = { ids: [] as string[], bodies: [] as unknown[] }
+    server.use(
+      http.patch(api(COMMENT_PATH), async ({ request, params }) => {
+        calls.ids.push(String(params.commentId))
+        calls.bodies.push(await request.json())
+        return respond()
+      }),
+    )
+    return calls
+  }
+
+  function mockDelete(respond: () => Response = () => new HttpResponse(null, { status: 204 })) {
+    const ids: string[] = []
+    server.use(
+      http.delete(api(COMMENT_PATH), ({ params }) => {
+        ids.push(String(params.commentId))
+        return respond()
+      }),
+    )
+    return ids
+  }
+
+  const article = (name: string) => screen.getByRole('article', { name })
+
+  it("edits the author's own comment and keeps its mention", async () => {
+    mockComments(() => [comment({ author: jane, body: `Hi @[Ravi](mention:${ravi.id}) see this`, mentions: [ravi] })])
+    const calls = mockPatch()
+    renderComments()
+
+    await userEvent.click(within(await screen.findByRole('article', { name: 'Comment by Jane Doe' })).getByRole('button', { name: 'Edit' }))
+    const form = screen.getByRole('form', { name: 'Edit comment' })
+    const box = within(form).getByRole('textbox', { name: 'Comment' })
+    expect(box).toHaveValue('Hi @Ravi Kumar see this')
+    expect(box).toHaveFocus()
+    expect(within(form).getByText('@Ravi Kumar', { selector: 'li' })).toBeInTheDocument()
+
+    await userEvent.type(box, ' now')
+    await userEvent.click(within(form).getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Comment updated')).toBeInTheDocument()
+    expect(calls.ids).toEqual(['2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d'])
+    expect(calls.bodies).toEqual([{ body: `Hi @[Ravi Kumar](mention:${ravi.id}) see this now` }])
+    await waitFor(() => expect(screen.queryByRole('form', { name: 'Edit comment' })).not.toBeInTheDocument())
+    await waitFor(() => expect(within(article('Comment by Jane Doe')).getByRole('button', { name: 'Edit' })).toHaveFocus())
+  })
+
+  it('discards an edit on Escape', async () => {
+    mockComments(() => [comment({ author: jane, body: 'Original' })])
+    const calls = mockPatch()
+    renderComments()
+
+    await userEvent.click(within(await screen.findByRole('article', { name: 'Comment by Jane Doe' })).getByRole('button', { name: 'Edit' }))
+    await userEvent.type(within(screen.getByRole('form', { name: 'Edit comment' })).getByRole('textbox'), ' changed{Escape}')
+
+    expect(screen.queryByRole('form', { name: 'Edit comment' })).not.toBeInTheDocument()
+    expect(article('Comment by Jane Doe')).toHaveTextContent('Original')
+    expect(calls.bodies).toEqual([])
+  })
+
+  it('edits a reply and shows a 403 in the form', async () => {
+    mockComments(() => [comment({ replies: [reply()] })])
+    mockPatch(() => HttpResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 }))
+    renderComments()
+
+    await userEvent.click(within(await screen.findByRole('article', { name: 'Reply by Jane Doe' })).getByRole('button', { name: 'Edit' }))
+    const form = screen.getByRole('form', { name: 'Edit reply' })
+    await userEvent.click(within(form).getByRole('button', { name: 'Save' }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent("You don't have permission to do that.")
+  })
+
+  it('offers Edit only to the author, and Delete to the author, ADMIN and MANAGER', async () => {
+    mockComments(() => [comment({ replies: [reply()] })])
+    renderSignedIn('/comments', {
+      role: 'MEMBER',
+      routes: (
+        <Routes>
+          <Route path="/comments" element={<ProgramComments programId={PROGRAM_ID} />} />
+        </Routes>
+      ),
+    })
+
+    // Ravi's comment: neither for a MEMBER who isn't its author.
+    const ravis = within(await screen.findByRole('article', { name: 'Comment by Ravi Kumar' }))
+    expect(ravis.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(ravis.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    // Jane's own reply: both.
+    const janes = within(article('Reply by Jane Doe'))
+    expect(janes.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(janes.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  })
+
+  it("lets a MANAGER delete someone else's comment, but not edit it", async () => {
+    mockComments(() => [comment()])
+    renderComments()
+
+    const ravis = within(await screen.findByRole('article', { name: 'Comment by Ravi Kumar' }))
+    expect(ravis.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(ravis.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  })
+
+  it('deletes a comment after confirming, and the list refetches', async () => {
+    let deleted = false
+    const queries = mockComments(() => (deleted ? [] : [comment({ author: jane })]))
+    const ids = mockDelete(() => {
+      deleted = true
+      return new HttpResponse(null, { status: 204 })
+    })
+    renderComments()
+
+    await userEvent.click(within(await screen.findByRole('article', { name: 'Comment by Jane Doe' })).getByRole('button', { name: 'Delete' }))
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete this comment?' })
+    expect(dialog).toHaveTextContent("This can't be undone.")
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete comment' }))
+
+    expect(await screen.findByText('Comment deleted')).toBeInTheDocument()
+    expect(await screen.findByText('No comments yet')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(ids).toEqual(['2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d'])
+    expect(queries).toHaveLength(2)
+  })
+
+  it('says the replies stay when deleting a comment that has some, and shows a 403 in the dialog', async () => {
+    mockComments(() => [comment({ replies: [reply()] })])
+    mockDelete(() => HttpResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 }))
+    renderComments()
+
+    await userEvent.click(within(await screen.findByRole('article', { name: 'Comment by Ravi Kumar' })).getByRole('button', { name: 'Delete' }))
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete this comment?' })
+    expect(dialog).toHaveTextContent('Its replies stay, under “This comment was deleted.”')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete comment' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent("You don't have permission to do that.")
+  })
+})

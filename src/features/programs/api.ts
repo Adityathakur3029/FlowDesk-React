@@ -63,3 +63,19 @@ export function useUpdateProgram(programId: string) {
     },
   })
 }
+
+// DELETE /programs/{programId}, ADMIN only (403 for anyone else). A soft delete: the program and every route
+// under it answer 404 afterwards, its key stays taken, and there's no restore endpoint yet.
+export function useDeleteProgram(programId: string) {
+  const queryClient = useQueryClient()
+  return useMutation<void, ApiError, void>({
+    mutationFn: async () => {
+      await unwrap(apiClient.DELETE('/programs/{programId}', { params: { path: { programId } } }))
+    },
+    onSuccess: () => {
+      // The Programs page loads fresh, so the deleted row doesn't flash. Nothing showing a list is mounted here.
+      queryClient.removeQueries({ queryKey: programKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: programKeys.detail(programId), refetchType: 'none' })
+    },
+  })
+}

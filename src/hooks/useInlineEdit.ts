@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 
-// Open/closed state of one inline editor on the program page. Closing (saved or cancelled) puts focus
+// Open/closed state of one inline editor (program and task pages). Closing (saved or cancelled) puts focus
 // back on the button that opened it, which is back in the DOM once the editor is gone.
 export function useInlineEdit() {
   const [editing, setEditing] = useState(false)

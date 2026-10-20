@@ -329,3 +329,65 @@ describe('ProgramPage editing', () => {
     expect(within(detail('End date')).queryByRole('button')).not.toBeInTheDocument()
   })
 })
+
+describe('ProgramPage delete', () => {
+  function mockDelete(respond: () => Response = () => new HttpResponse(null, { status: 204 })) {
+    const calls = { deletes: 0 }
+    server.use(
+      http.delete(api('/programs/:programId'), () => {
+        calls.deletes += 1
+        return respond()
+      }),
+      // The Programs page the user lands on.
+      http.get(api('/programs'), () => HttpResponse.json({ data: [], meta: { total: 0, limit: 20, offset: 0 } })),
+    )
+    return calls
+  }
+
+  it('deletes the program as an ADMIN after confirming and goes to Programs', async () => {
+    mockProgram(() => marketing)
+    const calls = mockDelete()
+    renderSignedIn(`/programs/${marketing.id}`, { role: 'ADMIN' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete program Marketing Research' }))
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete Marketing Research?' })
+    expect(dialog).toHaveTextContent('Its key MKT stays taken')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete program' }))
+
+    expect(await screen.findByText('Marketing Research deleted')).toBeInTheDocument()
+    await waitFor(() => expect(currentUrl()).toBe('/programs'))
+    expect(calls.deletes).toBe(1)
+  })
+
+  it('Cancel closes the dialog without a request', async () => {
+    mockProgram(() => marketing)
+    const calls = mockDelete()
+    renderSignedIn(`/programs/${marketing.id}`, { role: 'ADMIN' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete program Marketing Research' }))
+    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(calls.deletes).toBe(0)
+  })
+
+  it('keeps the dialog open with the error on a 403', async () => {
+    mockProgram(() => marketing)
+    mockDelete(() => HttpResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 }))
+    renderSignedIn(`/programs/${marketing.id}`, { role: 'ADMIN' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete program Marketing Research' }))
+    const dialog = screen.getByRole('alertdialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete program' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent("You don't have permission to do that.")
+    expect(currentUrl()).toBe(`/programs/${marketing.id}`)
+  })
+
+  it.each(['MANAGER', 'MEMBER'] as const)("doesn't offer delete to a %s", async (role) => {
+    mockProgram(() => marketing)
+    renderSignedIn(`/programs/${marketing.id}`, { role })
+    await screen.findByRole('heading', { level: 1, name: 'Marketing Research' })
+    expect(screen.queryByRole('button', { name: /^Delete program/ })).not.toBeInTheDocument()
+  })
+})

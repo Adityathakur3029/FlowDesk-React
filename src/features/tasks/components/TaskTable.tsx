@@ -1,8 +1,10 @@
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCalendarDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
+import { taskPath } from '@/routes/paths'
 import type { Task } from '../types'
 import { TaskPriorityLabel } from './TaskPriorityLabel'
 import { TaskStatusBadge } from './TaskStatusBadge'
@@ -71,7 +73,9 @@ export function TaskTable({ tasks, busy = false }: TaskTableProps) {
                   <TableCell className="font-mono text-sm whitespace-nowrap">{task.key}</TableCell>
                   <TableCell className="whitespace-normal">
                     <div className="flex max-w-md flex-col gap-1">
-                      <span className="font-medium">{task.title}</span>
+                      <Link to={taskPath(task.programId, task.key)} className="font-medium underline-offset-4 hover:underline">
+                        {task.title}
+                      </Link>
                       <TaskLabels labels={task.labels} />
                     </div>
                   </TableCell>

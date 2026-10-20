@@ -67,9 +67,9 @@ src/
     ui/                shadcn components (added with `npx shadcn add <name>`)
     brand/             SaajhaLogo (public/logo.png)
     layout/            AppShell, AppSidebar, Header, UserMenu, PageHeader, navItems.ts (sidebar entries + roles)
-    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary, FormErrorAlert
-    data/              Pagination (shared by list pages)
-  hooks/               shared hooks: shadcn's use-mobile.ts, useDebouncedValue.ts
+    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary, FormErrorAlert, ConfirmDeleteDialog
+    data/              Pagination (shared by list pages), ToneBadge, DetailRow (Details card rows, editable in place)
+  hooks/               shared hooks: shadcn's use-mobile.ts, useDebouncedValue.ts, useInlineEdit.ts
   features/
     <feature>/         e.g. invites, employees, teams, programs, tasks, comments
       index.ts         public entry: the only file other features may import from

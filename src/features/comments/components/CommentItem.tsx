@@ -1,18 +1,32 @@
 import type { ReactNode } from 'react'
+import { Pencil } from 'lucide-react'
+import { useAuth, useHasRole } from '@/auth/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { useInlineEdit } from '@/hooks/useInlineEdit'
 import { initials } from '@/lib/initials'
-import type { Comment, CommentReply } from '../types'
+import type { Comment, CommentReply, CommentTarget } from '../types'
+import { CommentActionButton } from './CommentActionButton'
 import { CommentBody } from './CommentBody'
+import { CommentForm } from './CommentForm'
+import { DeleteCommentButton } from './DeleteCommentButton'
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
+// DELETE /programs/{programId}/comments/{commentId} (contract): ADMIN or MANAGER, or the author. Editing is
+// the author's only, ADMIN included. UX only: the server still answers 403 to anyone else.
+const DELETE_ANY_COMMENT_ROLES = ['ADMIN', 'MANAGER'] as const
+
 interface CommentItemProps {
   comment: Comment | CommentReply
-  // Shown under the body, e.g. the thread's Reply button.
+  target: CommentTarget
+  // Shown under the body before Edit and Delete, e.g. the thread's Reply button.
   actions?: ReactNode
 }
 
-export function CommentItem({ comment, actions }: CommentItemProps) {
+export function CommentItem({ comment, target, actions }: CommentItemProps) {
+  const { employee } = useAuth()
+  const canDeleteAny = useHasRole(DELETE_ANY_COMMENT_ROLES)
+  const { editing, open, close, triggerRef } = useInlineEdit()
   const kind = comment.parentId === null ? 'Comment' : 'Reply'
 
   // A tombstone: a deleted top-level comment kept because it still has replies. Its author and body are
@@ -29,6 +43,9 @@ export function CommentItem({ comment, actions }: CommentItemProps) {
   }
 
   const { author } = comment
+  const isAuthor = employee !== null && employee.id === author.id
+  const canDelete = isAuthor || canDeleteAny
+
   return (
     <article aria-label={`${kind} by ${author.name}`} className="flex gap-3">
       <Avatar aria-hidden="true">
@@ -48,8 +65,26 @@ export function CommentItem({ comment, actions }: CommentItemProps) {
             </span>
           )}
         </div>
-        <CommentBody body={comment.body ?? ''} mentions={comment.mentions} />
-        {actions && <div className="flex gap-1">{actions}</div>}
+        {editing ? (
+          <CommentForm target={target} editing={comment} onDone={close} onCancel={close} />
+        ) : (
+          <>
+            <CommentBody body={comment.body ?? ''} mentions={comment.mentions} />
+            {(actions || isAuthor || canDelete) && (
+              // Lines the first button's text up with the body.
+              <div className="-ml-2 flex flex-wrap gap-1">
+                {actions}
+                {isAuthor && (
+                  <CommentActionButton ref={triggerRef} onClick={open}>
+                    <Pencil aria-hidden="true" />
+                    Edit
+                  </CommentActionButton>
+                )}
+                {canDelete && <DeleteCommentButton comment={comment} target={target} />}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </article>
   )

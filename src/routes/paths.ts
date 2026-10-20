@@ -7,7 +7,11 @@ export const paths = {
   teams: '/teams',
   programs: '/programs',
   program: '/programs/:programId',
+  task: '/programs/:programId/tasks/:taskRef',
   acceptInvite: '/invites/accept', // spec 05
 } as const
 
 export const programPath = (programId: string) => generatePath(paths.program, { programId })
+
+// taskRef is the task's key (MKT-7) or id; links use the key, as Jira does.
+export const taskPath = (programId: string, taskRef: string) => generatePath(paths.task, { programId, taskRef })

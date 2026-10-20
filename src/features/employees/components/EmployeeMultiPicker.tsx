@@ -12,11 +12,15 @@ const SEARCH_DEBOUNCE_MS = 250
 const MAX_QUERY_LENGTH = 100 // GET /employees `q` is 1-100 characters
 const MAX_SUGGESTIONS = 8
 
-interface EmployeeMultiPickerProps {
+// What a chip needs. A picked person is an Employee from the search; an existing value can be less, such as
+// a task's assignee (an EmployeeSummary).
+type PickedPerson = Pick<Employee, 'id' | 'name' | 'emailId'>
+
+interface EmployeeMultiPickerProps<T extends PickedPerson> {
   // Accessible name of the search input (cmdk gives the input its own id, so a visible <label> can't point at it).
   label: string
-  value: readonly Employee[]
-  onChange: (value: Employee[]) => void
+  value: readonly T[]
+  onChange: (value: (T | Employee)[]) => void
   disabled?: boolean
   invalid?: boolean
   placeholder?: string
@@ -29,7 +33,7 @@ interface EmployeeMultiPickerProps {
 
 // Gmail-style recipient box: type to search GET /employees?q=, pick with Enter or a click, and each pick
 // becomes a chip with a remove button. Already-picked people aren't suggested again.
-export function EmployeeMultiPicker({
+export function EmployeeMultiPicker<T extends PickedPerson = Employee>({
   label,
   value,
   onChange,
@@ -39,7 +43,7 @@ export function EmployeeMultiPicker({
   teamName,
   max = Infinity,
   'aria-describedby': describedBy,
-}: EmployeeMultiPickerProps) {
+}: EmployeeMultiPickerProps<T>) {
   const inputRef = useRef<HTMLInputElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')

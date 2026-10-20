@@ -1,6 +1,6 @@
 import { Bug, ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, CircleAlert, ClipboardList, Equal, Flag, SquareCheck, type LucideIcon } from 'lucide-react'
 import type { Tone } from '@/lib/tones'
-import type { CreatableTaskStatus, TaskPriority, TaskStatus, TaskType } from './types'
+import type { CreatableTaskStatus, SettableTaskStatus, TaskPriority, TaskStatus, TaskType } from './types'
 
 // Display only. Every list keeps the contract's enum order, which is also the order in the selects.
 
@@ -8,6 +8,9 @@ export const TASK_STATUSES = ['DISCUSSION', 'ON_HOLD', 'IN_PROGRESS', 'DONE', 'D
 
 // DEPENDENT is set by the server when a task has an unfinished blocker, so clients can't pick it.
 export const CREATABLE_TASK_STATUSES = ['DISCUSSION', 'ON_HOLD', 'IN_PROGRESS', 'DONE'] as const satisfies readonly CreatableTaskStatus[]
+
+// The same four on update.
+export const SETTABLE_TASK_STATUSES = CREATABLE_TASK_STATUSES satisfies readonly SettableTaskStatus[]
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   DISCUSSION: 'Discussion',
@@ -78,3 +81,15 @@ export const TASK_PRIORITY_TONES: Record<TaskPriority, Tone> = {
   HIGH: 'orange',
   HIGHEST: 'red',
 }
+
+// estimateMinutes as people say it: 45 min, 8 h, 1 h 30 min.
+export function formatEstimate(minutes: number): string {
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours === 0) return `${rest} min`
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`
+}
+
+// The estimate editor's text, in hours with at most 2 decimals (90 → '1.5'). hoursToMinutes() turns it back
+// into the same minutes, so an untouched estimate saves nothing.
+export const minutesToHours = (minutes: number) => String(Number((minutes / 60).toFixed(2)))

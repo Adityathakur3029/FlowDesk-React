@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findMentionQuery, insertMention, mentionedIn, toMentionTokens } from './mentions'
+import { findMentionQuery, fromMentionTokens, insertMention, mentionedIn, toMentionTokens } from './mentions'
 
 const JANE = { id: 'baac08e5-eaef-46f0-ac9e-f8b7266c71e0', name: 'Jane Doe' }
 const JAN = { id: 'c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f', name: 'Jan' }
@@ -58,5 +58,27 @@ describe('mentionedIn', () => {
   it('lists the picked people still in the body, once each, in order', () => {
     expect(mentionedIn('@Jan then @Jane Doe and @Jan again', [JANE, JAN])).toEqual([JAN, JANE])
     expect(mentionedIn('nobody here', [JANE])).toEqual([])
+  })
+})
+
+describe('fromMentionTokens', () => {
+  it('shows each token as @Name with the current name, and picks those people once each', () => {
+    const body = `Hi @[Jane](mention:${JANE.id}) and @[Jan](mention:${JAN.id}), @[Jane](mention:${JANE.id}) again`
+    const { text, people } = fromMentionTokens(body, [{ ...JANE, emailId: 'jane.doe@saajha.org' }])
+
+    // Jane's label is out of date, so her current name wins; Jan isn't in `mentions`, so his label stays.
+    expect(text).toBe('Hi @Jane Doe and @Jan, @Jane Doe again')
+    expect(people).toEqual([
+      { id: JANE.id, name: 'Jane Doe' },
+      { id: JAN.id, name: 'Jan' },
+    ])
+    // Saving the untouched text keeps both mentioned.
+    expect(toMentionTokens(text, people)).toBe(
+      `Hi @[Jane Doe](mention:${JANE.id}) and @[Jan](mention:${JAN.id}), @[Jane Doe](mention:${JANE.id}) again`,
+    )
+  })
+
+  it('leaves a body without tokens as it is', () => {
+    expect(fromMentionTokens('Plain @jane text', [])).toEqual({ text: 'Plain @jane text', people: [] })
   })
 })

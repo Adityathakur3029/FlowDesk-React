@@ -1,4 +1,5 @@
-import type { MentionedPerson } from './types'
+import { parseCommentBody } from './commentBody'
+import type { EmployeeSummary, MentionedPerson } from './types'
 
 // While typing, a mention shows as "@Jane Doe" in the box; it becomes the contract's token
 // @[Jane Doe](mention:<uuid>) only when the comment is posted (toMentionTokens). Editing the name in the box
@@ -60,6 +61,25 @@ export function toMentionTokens(body: string, people: readonly MentionedPerson[]
   const matcher = mentionMatcher(people)
   if (!matcher) return body
   return body.replace(matcher.pattern, (_, label: string) => `@[${label}](mention:${matcher.byLabel.get(label)!.id})`)
+}
+
+// The other way, for editing a stored comment: each token becomes "@Name" with the person's current name from
+// `mentions` (as the comment shows it), and they come back as already picked, so saving keeps them mentioned.
+export function fromMentionTokens(
+  body: string,
+  mentions: readonly EmployeeSummary[],
+): { text: string; people: MentionedPerson[] } {
+  const names = new Map(mentions.map((person) => [person.id.toLowerCase(), person.name]))
+  const people = new Map<string, MentionedPerson>()
+  const text = parseCommentBody(body)
+    .map((part) => {
+      if (part.type === 'text') return part.text
+      const name = mentionLabel(names.get(part.employeeId) ?? part.label)
+      if (!people.has(part.employeeId)) people.set(part.employeeId, { id: part.employeeId, name })
+      return `@${name}`
+    })
+    .join('')
+  return { text, people: [...people.values()] }
 }
 
 // The picked people whose "@Name" is still in the body, in the order they appear.

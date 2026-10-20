@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Reply } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import type { Comment } from '../types'
+import type { Comment, CommentTarget } from '../types'
+import { CommentActionButton } from './CommentActionButton'
 import { CommentForm } from './CommentForm'
 import { CommentItem } from './CommentItem'
 
 // A top-level comment, its replies (oldest first) and an inline reply form. Replies can't have replies.
-export function CommentThread({ programId, comment }: { programId: string; comment: Comment }) {
+export function CommentThread({ target, comment }: { target: CommentTarget; comment: Comment }) {
   const [replying, setReplying] = useState(false)
   const replies = comment.replies ?? []
   // A deleted comment can't be replied to (contract).
@@ -16,18 +16,13 @@ export function CommentThread({ programId, comment }: { programId: string; comme
     <li className="flex flex-col gap-3 rounded-xl border border-blue-100 bg-background p-4 shadow-xs dark:border-blue-900/60">
       <CommentItem
         comment={comment}
+        target={target}
         actions={
           canReply && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2 h-7 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-300 dark:hover:bg-blue-500/10"
-              onClick={() => setReplying(true)}
-            >
+            <CommentActionButton onClick={() => setReplying(true)}>
               <Reply aria-hidden="true" />
               Reply
-            </Button>
+            </CommentActionButton>
           )
         }
       />
@@ -38,14 +33,14 @@ export function CommentThread({ programId, comment }: { programId: string; comme
             <ul aria-label="Replies" className="flex flex-col gap-3">
               {replies.map((reply) => (
                 <li key={reply.id}>
-                  <CommentItem comment={reply} />
+                  <CommentItem comment={reply} target={target} />
                 </li>
               ))}
             </ul>
           )}
           {replying && (
             <CommentForm
-              programId={programId}
+              target={target}
               parentId={comment.id}
               autoFocus
               onDone={() => setReplying(false)}
