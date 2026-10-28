@@ -54,17 +54,25 @@ src/
     env.ts             typed, validated env
   auth/
     AuthProvider.tsx   session state (employee, token, status), login/logout
-    useAuth.ts
+    authContext.ts     AuthContext + AuthState type
+    useAuth.ts         useAuth(), useHasRole(roles)
+    api.ts             authKeys, fetchMe, useSignInWithGoogle (the only apiClient calls in auth/)
+    types.ts           Employee / Role / LoginResult aliases of generated types
     tokenStorage.ts    localStorage read/write/clear for token + expiry
+    redirect.ts        safeRedirect() for ?redirect= (blocks off-site redirects)
     RequireAuth.tsx    route guard: signed in?
     RequireRole.tsx    route/UI guard: role allowed? (UX only)
     LoginPage.tsx
   components/
     ui/                shadcn components (added with `npx shadcn add <name>`)
-    layout/            AppShell, Sidebar, Header, UserMenu
-    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState
+    brand/             SaajhaLogo (public/logo.png)
+    layout/            AppShell, AppSidebar, SidebarUserMenu, MobileTopBar, PageHeader, navItems.ts (sidebar entries + roles)
+    feedback/          PageLoader, EmptyState, ErrorState, ForbiddenState, NotFoundState, RouteErrorBoundary, FormErrorAlert, ConfirmDeleteDialog
+    data/              Pagination (shared by list pages), ToneBadge, KeyBadge (program / board / task keys), DetailRow (Details card rows, editable in place)
+  hooks/               shared hooks: shadcn's use-mobile.ts, useDebouncedValue.ts, useInlineEdit.ts
   features/
-    <feature>/         e.g. invites, employees, teams, programs, tasks, comments
+    <feature>/         e.g. invites, employees, teams, programs, boards, tasks, comments, overview
+      index.ts         public entry: the only file other features may import from
       api.ts           service functions, query keys, useQuery/useMutation hooks
       components/
       pages/
@@ -72,13 +80,20 @@ src/
   lib/
     utils.ts           cn() etc.
     queryClient.ts
+    formErrors.ts      applyServerErrors(): 400 details → form fields, rest → form-level alert
+    roles.ts           ROLE_LABELS (display only)
+    dates.ts           calendar dates: formatCalendarDate (UTC), isCalendarDate, localToday, shiftCalendarDate
+    keys.ts            program and board keys: KEY_PATTERN, keySchema, suggestKey, keyHint
   routes/
     router.tsx         route tree, public vs protected
     paths.ts           route path constants
+    LegacyTaskRedirect.tsx  /programs/:programId/tasks/:taskRef → /tasks/:taskRef
   main.tsx, App.tsx
 ```
 
-Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiClient` (`src/api/client.ts`) → backend.** Components never call `fetch` or `apiClient` directly, and features don't import each other's internals; shared code moves to `components/`, `lib/` or `api/`.
+Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiClient` (`src/api/client.ts`) → backend.** Components never call `fetch` or `apiClient` directly, and features don't import each other's internals: a feature may expose an `index.ts`, and other features import only from it (`@/features/invites`, never `@/features/invites/components/…`). Shared code moves to `components/`, `lib/` or `api/`.
+
+Features that import each other (`employees` ↔ `teams`) must not form a cycle: an `index.ts` never exports pages or anything that imports the other feature's `index.ts`. The router imports pages by path (`@/features/teams/pages/TeamsPage`). `programs` and `boards` import `@/features/tasks` (`TaskListSection`, `taskKeys`); `tasks` imports neither, because a task names its own parent (`task.parent`).
 
 ## 1. Backend API contract
 
@@ -150,11 +165,14 @@ Request flow: **page/component → feature hook (`features/*/api.ts`) → `apiCl
 |---|---|---|---|
 | Invite member (`POST /invites`) | ✓ | ✓ | ✗ |
 | Create employee directly (`POST /employees`) | ✓ | ✗ | ✗ |
+| Update employee name / role / active (`PATCH /employees/{id}`); not your own role or status (`SELF_LOCKOUT`), not the last admin (`LAST_ADMIN`) | ✓ | ✗ | ✗ |
 | Create / update team, add / remove team members | ✓ | ✓ | ✗ |
 | Delete team | ✓ | ✗ | ✗ |
 | Create / update program | ✓ | ✓ | ✗ |
 | Delete program | ✓ | ✗ | ✗ |
-| Create / update tasks, dependencies, comments | ✓ | ✓ | ✓ |
+| Create / update board (name, description) | ✓ | ✓ | ✗ |
+| Delete board | ✓ | ✗ | ✗ |
+| Create / update tasks (program or board), dependencies, comments | ✓ | ✓ | ✓ |
 | Delete task | ✓ | ✓ | reporter only |
 | Edit comment | author only | author only | author only |
 | Delete comment | ✓ | ✓ | author only |
@@ -166,7 +184,9 @@ Keep this table in sync with the contract when the backend changes.
 
 - Use shadcn/ui components from `src/components/ui`; add new ones with `npx shadcn add <name>` instead of hand-rolling. Style with Tailwind utilities and `cn()`.
 - Reuse `components/feedback/*` for loading, empty, error, forbidden and not-found states, and sonner toasts for mutation results.
-- `AppShell` holds the sidebar navigation, header, user menu (name, role, logout) and an `<Outlet />`. Nav items declare the roles they're shown to.
+- `AppShell` holds the sidebar and an `<Outlet />`; there's no header on desktop. The sidebar footer has the collapse button and the user menu (name, role, logout). Phones get a thin `MobileTopBar` with the sidebar toggle, because the sidebar is a slide-out sheet there. Nav items declare the roles they're shown to. A new section is one entry in `components/layout/navItems.ts` plus its route; the sidebar itself doesn't change.
+- Every page starts with `<PageHeader title description? actions?>`, which also sets the document title.
+- Form dialogs put their `<form>` inside `DialogBody` (a local addition to `ui/dialog.tsx`): `DialogContent` is capped at the viewport and only the body scrolls, so the title and buttons stay visible. Exception: a body with an `absolute` dropdown at its bottom (`EmployeeMultiPicker` in `CreateTeamDialog`) would clip it.
 - Forms: react-hook-form + zod resolver. The zod schema mirrors the contract's documented constraints (lengths, enums, required fields) for instant feedback only; server `details` always win.
 - Accessibility: label every input, make buttons real `<button>`s, keep keyboard focus visible.
 
@@ -186,23 +206,39 @@ Keep this table in sync with the contract when the backend changes.
 4. **App layout**: AppShell, navigation, header, role-aware menus, global loading/error boundaries.
 5. **Invitation management**: invite form (ADMIN/MANAGER), public `/invites/accept?token=` page.
 6. **Member management**: employee list/detail (filters `role`, `teamId`, `includeInactive`, pagination), team membership.
-7. Then: teams → programs → tasks (dependencies, labels) → comments (replies, @mentions).
+7. Then: teams → programs → tasks (dependencies, labels) → comments (replies, @mentions) → overview → boards (spec 15).
 
-## Known contract facts and gaps (audited 2026-10-17)
+## Known contract facts and gaps (audited 2026-10-17, updated 2026-10-28)
 
 Facts:
-- 36 operations across Health, Auth, Employees, Invites, Teams, Programs, Tasks and Comments. Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
+- 56 operations across Health, Auth, Employees, Invites, Teams, Programs, Boards, Tasks, Comments and Reports (`PATCH /employees/{id}` added 2026-10-18, `GET /reports/overview` 2026-10-20, boards and `/tasks/{taskRef}…` 2026-10-28). Everything except `GET /health-check`, `POST /auth/google` and `POST /invites/accept` needs a bearer token.
+- `GET /employees?q=` searches name or email (case-insensitive substring) and then orders by match quality instead of newest first. Use it for every people picker (team members, assignees, @mentions).
+- `PATCH /employees/{id}` finds inactive employees too (reactivation), but `GET /employees/{id}` returns 404 for them. Team changes go through `PUT`/`DELETE /teams/{teamId}/members/{employeeId}`, never the PATCH. `PUT` moves an employee out of any other team and needs an active employee.
+- Deactivating an employee ends their sessions (next request 401) and drops them from team member lists and `memberCount`, but they keep `teamId`. Roles are read from the DB on every request.
+- `POST /teams` creates an empty team; members are added one `PUT` each, so creating a team with members isn't atomic.
 - Org email domain is exactly `saajha.org` (subdomains rejected) for both invites and Google sign-in.
 - An invite is valid for 72 hours. Re-inviting the same email revokes the previous pending invite. The token is only sent by email and never returned by the API.
 - `POST /invites/accept` only creates the employee. The user then signs in with Google separately. Error codes: `INVALID_INVITE_TOKEN`, `INVITE_REVOKED` (400), `INVITE_ALREADY_ACCEPTED`, `EMPLOYEE_EXISTS` (409), and **410** for an expired invite.
 - An employee created via `POST /employees` (no invite) **can't sign in** (`NOT_INVITED`), so prefer invites in the UI.
-- Tasks are addressed by `taskRef` (id or key such as `MKT-3`).
+- Tasks are addressed by `taskRef` (id or key such as `MKT-3`, case-insensitive). Every task is in exactly one **program or board** (`programId` / `boardId`, one of them null), fixed at creation, and carries a `parent: { type: PROGRAM | BOARD, id, key, name, isActive }` summary.
+- **Task numbers are global**: one counter across every program and board, never reused, so a key such as `PRO-50` is unique across FlowDesk even when a program and a board share the prefix `PRO`. Numbers within one parent have gaps; don't promise `MKT-1, MKT-2…`. Tasks from before boards keep their numbers.
+- **One task = `/tasks/{taskRef}`** for every task: `GET`/`PATCH`/`DELETE`, `…/dependencies`, `…/comments` and `…/comments/{commentId}`. The frontend uses only these for a single task (the program-nested single-task routes still exist). Lists and create stay nested: `/programs/{programId}/tasks` and `/boards/{boardId}/tasks`, same filters, plus `createdFrom` / `createdTo` (UTC date of `createdAt`, inclusive). Blockers must have the same parent (400 `DEPENDENCY_OTHER_PARENT`).
+- **Boards** (`/boards…`): key + name + optional description, no status, dates, owner team or board-level comments. ADMIN/MANAGER create and edit, ADMIN deletes. A board key is unique among boards (deleted ones included) and may equal a program key; 409 `BOARD_KEY_EXISTS`. Deleting a board hides **only the board** (its page, list and create are 404): its tasks stay live at `/tasks/{taskRef}` with `parent.isActive: false`, and still count in the report.
+- Programs have optional `startDate` / `endDate` (added 2026-10-19): calendar dates `YYYY-MM-DD`, null when unset, past dates allowed. End before start → 400 `INVALID_DATE_RANGE` (on `PATCH` the merged values are checked). Format them in UTC, or they show a day early west of UTC. `completedAt` / `cancelledAt` (added 2026-10-20) are set by the server when the status enters COMPLETED / CANCELLED, and cleared when it leaves.
+- `GET /reports/overview?from&to` (any active employee) returns the whole Overview in one call: totals with previous-period counts, current-status breakdowns, open tasks by priority, a weekly/monthly trend, and per-team, per-program and per-board rows. `scope=all|programs|boards` (default all) picks the tasks behind every task number; program-only numbers are 0 / empty under `boards`, and `boards[]` is empty under `programs`. Dates are UTC and inclusive; more than 1096 days → 400 `DATE_RANGE_TOO_LONG`. Its scope rules (in-scope programs, event vs snapshot counts) are in the operation description. Render its numbers; don't recompute them.
+- Comment bodies are Markdown with mention tokens `@[Name](mention:<uuid>)`; render them escaped (no `dangerouslySetInnerHTML`) and show mentions with the current name from `mentions`. Program comment lists page **threads** (`meta.total` counts threads), each with all its replies.
 
 Gaps (report them and don't work around them; ask the backend before building the UI):
 1. **No invite listing / revoke / resend** (`GET /invites` etc. don't exist). "Invitation management" today means only create + accept.
-2. **No endpoint to change an employee's role or deactivate them.** "Member management" today means list/view employees + team membership.
+2. ~~No endpoint to change an employee's role or deactivate them.~~ Closed 2026-10-18: `PATCH /employees/{id}`.
 3. **No logout, token revocation or refresh endpoint.** Logout is client-side, and users sign in again after `expiresIn` (8 h).
-4. The `POST /employees` 409 response has no documented `code` (probably `EMPLOYEE_EXISTS`). Confirm before relying on it.
+4. ~~The `POST /employees` 409 response has no documented `code`.~~ Closed 2026-10-18: it's `EMPLOYEE_EXISTS`.
+5. **`Employee` has only `teamId`, and `Program` only `ownerTeamId`, no team name.** The frontend loads every team (`useTeamDirectory`) to show names. A `team: { id, name } | null` / `ownerTeam` summary would remove that.
+6. **`Comment.author` / `CommentReply.author` and `Task.assignee` generate as non-nullable** (`allOf` + `nullable` in OpenAPI 3.0), but they're `null` on a tombstone / when unassigned. Check `isActive` before reading `author`, and check `assignee` for null. Backend fix: `nullable: true` next to the `allOf`, not inside it.
+7. ~~No reporting / aggregate endpoint.~~ Closed 2026-10-20: `GET /reports/overview` (spec 14).
+8. **A deleted board's tasks can't be listed** (found 2026-10-28, spec 15). They stay live, but `GET /boards/{boardId}/tasks` is 404 for a deleted board and there's no cross-parent task list or search, so they're reachable only by key or link. There's no board restore either.
+
+Tooling note: `openapi-typescript` marks request fields that have a `default` as required (`CreateTaskRequest.labels`, `dependsOn`, …). Send the contract default explicitly rather than casting.
 
 ## Definition of done (per feature)
 
