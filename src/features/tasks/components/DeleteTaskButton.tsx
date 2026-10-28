@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { getErrorMessage, isApiError } from '@/api/errors'
 import { ConfirmDeleteDialog } from '@/components/feedback/ConfirmDeleteDialog'
-import { programPath } from '@/routes/paths'
 import { useDeleteTask } from '../api'
+import { parentPath } from '../taskParent'
 import type { TaskDetail } from '../types'
 
 interface DeleteTaskButtonProps {
@@ -14,23 +14,24 @@ interface DeleteTaskButtonProps {
 }
 
 // The page only shows this to ADMIN, MANAGER and the task's reporter (contract); a 403 is still handled.
+// Afterwards it goes back to the task's program or board.
 export function DeleteTaskButton({ task, taskRef }: DeleteTaskButtonProps) {
   const navigate = useNavigate()
   const [errors, setErrors] = useState<string[]>([])
-  const deleteTask = useDeleteTask(task.programId, taskRef)
+  const deleteTask = useDeleteTask(task, taskRef)
 
   function confirm() {
     setErrors([])
     deleteTask.mutate(undefined, {
       onSuccess: () => {
         toast.success(`${task.key} deleted`, { description: task.title })
-        void navigate(programPath(task.programId))
+        void navigate(parentPath(task.parent))
       },
       onError: (error) => {
         // Someone else deleted it (or its program) first: the outcome is the same.
         if (isApiError(error) && error.status === 404) {
           toast.info('This task has already been deleted.')
-          void navigate(programPath(task.programId))
+          void navigate(parentPath(task.parent))
           return
         }
         setErrors([getErrorMessage(error)])

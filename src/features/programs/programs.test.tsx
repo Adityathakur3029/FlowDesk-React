@@ -129,7 +129,7 @@ describe('ProgramsPage', () => {
     mockPrograms(() => [marketing])
     renderSignedIn('/programs')
     const nav = await screen.findByRole('navigation', { name: 'Main' })
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Programs', 'Overview', 'People', 'Teams'])
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Programs', 'Boards', 'Overview', 'People', 'Teams'])
   })
 
   it('shows the start and end dates, or "Not set"', async () => {
@@ -304,7 +304,7 @@ describe('ProgramsPage status filter', () => {
 })
 
 describe('CreateProgramDialog', () => {
-  it('suggests a key from the name and previews the task keys', async () => {
+  it('suggests a key from the name and previews the task key prefix', async () => {
     mockTeams(() => [design, research])
     mockPrograms(() => [hiring])
     renderSignedIn('/programs')
@@ -312,7 +312,8 @@ describe('CreateProgramDialog', () => {
 
     await userEvent.type(within(dialog).getByLabelText('Name'), 'Marketing Research')
     expect(within(dialog).getByLabelText('Key')).toHaveValue('MR')
-    expect(within(dialog).getByText("Tasks will be numbered MR-1, MR-2… The key can't be changed later.")).toBeInTheDocument()
+    // Task numbers are global (spec 15), so the hint doesn't promise MR-1, MR-2…
+    expect(within(dialog).getByText("Task keys will start with MR-. The key can't be changed later.")).toBeInTheDocument()
   })
 
   it("keeps the user's own key, uppercased, and resumes suggesting once it's cleared", async () => {
@@ -408,7 +409,7 @@ describe('CreateProgramDialog', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create program' }))
 
     expect(await screen.findByText('Program “Marketing Research” created')).toBeInTheDocument()
-    expect(screen.getByText('Its tasks will be numbered MR-1, MR-2…')).toBeInTheDocument()
+    expect(screen.getByText('Its task keys will start with MR-.')).toBeInTheDocument()
     expect(calls.bodies).toEqual([{ ownerTeamId: research.id, key: 'MR', name: 'Marketing Research', status: 'PLANNED' }])
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await waitFor(() => expect(queries).toHaveLength(2))

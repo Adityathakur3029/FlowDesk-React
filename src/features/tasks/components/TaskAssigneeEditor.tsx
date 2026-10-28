@@ -27,7 +27,7 @@ export function TaskAssigneeEditor({ task, taskRef, onClose }: TaskAssigneeEdito
   const [value, setValue] = useState<EmployeeSummary[]>(task.assignee ? [task.assignee] : [])
   const [fieldError, setFieldError] = useState<string>()
   const [formErrors, setFormErrors] = useState<string[]>([])
-  const update = useUpdateTask(task.programId, taskRef)
+  const update = useUpdateTask(taskRef)
   const pending = update.isPending
 
   // After a failed save, focus goes back into the picker (the Save button was disabled meanwhile).

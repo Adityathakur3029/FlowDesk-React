@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { END_BEFORE_START, isCalendarDate, PERIOD_PRESETS, type OverviewPeriod, type PeriodPreset } from '../period'
-import type { OverviewParams } from '../types'
+import { isCalendarDate } from '@/lib/dates'
+import { END_BEFORE_START, PERIOD_PRESETS, type OverviewPeriod, type PeriodPreset } from '../period'
+import { REPORT_SCOPES } from '../scope'
+import type { OverviewParams, ReportScope } from '../types'
 
 const CUSTOM = 'custom'
 const ERROR_ID = 'overview-range-error'
@@ -16,15 +18,34 @@ interface PeriodFilterProps {
   // A 400 for the custom range, shown under its inputs.
   error: string | null
   onChange: (period: OverviewPeriod) => void
+  // Which tasks the report covers. Changing it keeps the period (and a custom range still being edited).
+  scope: ReportScope
+  onScopeChange: (scope: ReportScope) => void
 }
 
 // One row above the whole report. A preset applies at once; a custom range waits for Apply, so a half-edited
 // range never fires a request. The page remounts this (key) whenever the period in the URL changes.
-export function PeriodFilter({ period, range, error, onChange }: PeriodFilterProps) {
+export function PeriodFilter({ period, range, error, onChange, scope, onScopeChange }: PeriodFilterProps) {
   const [customOpen, setCustomOpen] = useState(period.preset === CUSTOM)
 
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex items-center gap-2">
+        <Label htmlFor="overview-scope">Show</Label>
+        <Select value={scope} onValueChange={(value) => onScopeChange(value as ReportScope)}>
+          <SelectTrigger id="overview-scope" className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {REPORT_SCOPES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex items-center gap-2">
         <Label htmlFor="overview-period">Period</Label>
         <Select

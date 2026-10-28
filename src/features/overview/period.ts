@@ -1,3 +1,4 @@
+import { isCalendarDate, toIsoDate } from '@/lib/dates'
 import type { OverviewParams } from './types'
 
 export const PERIOD_PRESETS = [
@@ -18,14 +19,6 @@ const DAY_MS = 86_400_000
 // custom-range form also checks it before sending, for instant feedback only.
 export const END_BEFORE_START = 'The start date must be on or before the end date.'
 
-// A real calendar date in the contract's YYYY-MM-DD form (2026-02-30 isn't one).
-export function isCalendarDate(value: string | null): value is string {
-  if (value === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const [y, m, d] = value.split('-').map(Number)
-  const date = new Date(Date.UTC(y, m - 1, d))
-  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
-}
-
 // URL hygiene only: an unknown preset or a malformed custom date falls back to the default. Whether a valid
 // custom range is acceptable (order, length) is the server's call.
 export function parsePeriod(params: URLSearchParams): OverviewPeriod {
@@ -44,13 +37,6 @@ export function parsePeriod(params: URLSearchParams): OverviewPeriod {
 export function toPeriodSearchParams(period: OverviewPeriod): URLSearchParams {
   if (period.preset === 'custom') return new URLSearchParams({ period: 'custom', from: period.from, to: period.to })
   return new URLSearchParams(period.preset === DEFAULT_PERIOD.preset ? {} : { period: period.preset })
-}
-
-const toIsoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10)
-
-// The browser's own calendar date: "last month" ends today where the reader is.
-export function localToday(now = new Date()): string {
-  return toIsoDate(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
 }
 
 // A preset ends today and starts the day after the same date `months` earlier (clamped to that month's last

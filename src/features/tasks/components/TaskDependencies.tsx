@@ -27,7 +27,7 @@ interface TaskDependenciesProps {
 export function TaskDependencies({ task, taskRef }: TaskDependenciesProps) {
   const [adding, setAdding] = useState(false)
   const addRef = useRef<HTMLButtonElement>(null)
-  const removeBlocker = useRemoveBlocker(task.programId, taskRef)
+  const removeBlocker = useRemoveBlocker(task, taskRef)
 
   function closeAdd() {
     setAdding(false)
@@ -75,7 +75,6 @@ export function TaskDependencies({ task, taskRef }: TaskDependenciesProps) {
             {task.dependsOn.length > 0 && (
               <DependencyGroup
                 title="Blocked by"
-                programId={task.programId}
                 tasks={task.dependsOn}
                 renderRemove={(blocker) => {
                   const removing = removeBlocker.isPending && removeBlocker.variables.id === blocker.id
@@ -95,7 +94,7 @@ export function TaskDependencies({ task, taskRef }: TaskDependenciesProps) {
                 }}
               />
             )}
-            {task.blocks.length > 0 && <DependencyGroup title="Blocks" programId={task.programId} tasks={task.blocks} />}
+            {task.blocks.length > 0 && <DependencyGroup title="Blocks" tasks={task.blocks} />}
           </div>
         ) : (
           !adding && <p className="text-sm text-muted-foreground">No dependencies.</p>
@@ -107,14 +106,13 @@ export function TaskDependencies({ task, taskRef }: TaskDependenciesProps) {
 
 interface DependencyGroupProps {
   title: string
-  programId: string
   tasks: readonly TaskSummary[]
   // A button at the end of each row, e.g. Remove.
   renderRemove?: (task: TaskSummary) => ReactNode
 }
 
 // One side of the links: a small label over single-line rows, the first VISIBLE_ROWS of them until expanded.
-function DependencyGroup({ title, programId, tasks, renderRemove }: DependencyGroupProps) {
+function DependencyGroup({ title, tasks, renderRemove }: DependencyGroupProps) {
   const headingId = useId()
   const [expanded, setExpanded] = useState(false)
   const hiddenCount = tasks.length - VISIBLE_ROWS
@@ -129,7 +127,7 @@ function DependencyGroup({ title, programId, tasks, renderRemove }: DependencyGr
         {shown.map((task) => (
           <li key={task.id} className="flex min-h-8 items-center gap-2 px-3 py-1">
             <Link
-              to={taskPath(programId, task.key)}
+              to={taskPath(task.key)}
               title={task.title}
               className="flex min-w-0 flex-1 items-center gap-2 underline-offset-4 hover:underline"
             >

@@ -4,10 +4,12 @@ import {
   CalendarDays,
   CircleCheck,
   Clock,
+  FolderKanban,
   Gauge,
   History,
   Pencil,
   Shapes,
+  SquareKanban,
   Tags,
   Timer,
   UserRound,
@@ -18,6 +20,7 @@ import { Link, useParams } from 'react-router'
 import { isApiError } from '@/api/errors'
 import { useAuth, useHasRole } from '@/auth/useAuth'
 import { Detail, EditableDetail, NotSet } from '@/components/data/DetailRow'
+import { KeyBadge } from '@/components/data/KeyBadge'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { NotFoundState } from '@/components/feedback/NotFoundState'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -26,12 +29,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TaskComments } from '@/features/comments'
-import { useProgram } from '@/features/programs'
 import { useInlineEdit } from '@/hooks/useInlineEdit'
 import { formatCalendarDate } from '@/lib/dates'
 import { TONE_DOT_CLASSES } from '@/lib/tones'
 import { cn } from '@/lib/utils'
-import { programPath } from '@/routes/paths'
 import { useTask } from '../api'
 import { DeleteTaskButton } from '../components/DeleteTaskButton'
 import { TaskAssigneeEditor } from '../components/TaskAssigneeEditor'
@@ -40,7 +41,8 @@ import { TaskFieldEditor, type EditableTaskField } from '../components/TaskField
 import { TaskOptionMenu } from '../components/TaskOptionMenu'
 import { TaskStatusMenu } from '../components/TaskStatusMenu'
 import { formatEstimate, TASK_STATUS_TONES } from '../taskDisplay'
-import type { TaskDetail } from '../types'
+import { parentPath } from '../taskParent'
+import type { TaskDetail, TaskParent } from '../types'
 
 const timestampFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
@@ -49,21 +51,16 @@ const timestampFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium'
 const DELETE_ANY_TASK_ROLES = ['ADMIN', 'MANAGER'] as const
 
 export function TaskPage() {
-  const { programId = '', taskRef = '' } = useParams()
-  const task = useTask(programId, taskRef)
+  const { taskRef = '' } = useParams()
+  const task = useTask(taskRef)
 
-  if (task.isPending) return <TaskPageSkeleton programId={programId} />
+  if (task.isPending) return <TaskPageSkeleton />
 
   if (task.isError) {
-    // 404: unknown or deleted task or program, or a task of another program. 400: the id or key in the URL
-    // isn't valid, which is just as missing.
+    // 404: unknown or deleted task, or a task of a deleted program. 400: the id or key in the URL isn't valid,
+    // which is just as missing.
     if (isApiError(task.error) && (task.error.status === 404 || task.error.status === 400)) {
-      return (
-        <NotFoundState
-          title="Task not found"
-          description="This task doesn't exist, has been deleted, or belongs to another program."
-        />
-      )
+      return <NotFoundState title="Task not found" description="This task doesn't exist or has been deleted." />
     }
     return <ErrorState error={task.error} title="Couldn't load the task" onRetry={() => task.refetch()} retrying={task.isFetching} />
   }
@@ -71,16 +68,35 @@ export function TaskPage() {
   return <TaskView task={task.data} taskRef={taskRef} />
 }
 
-// "← Marketing Research". The program is usually cached from its page; until it loads the link says "Program".
-function BackToProgram({ programId }: { programId: string }) {
-  const program = useProgram(programId)
+// "← Marketing Research": back to the task's program or board, named by the task itself (parent). A deleted
+// board's page is gone, so its tasks go back to Boards.
+function BackToParent({ parent }: { parent: TaskParent }) {
   return (
     <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
-      <Link to={programPath(programId)}>
+      <Link to={parentPath(parent)}>
         <ArrowLeft aria-hidden="true" />
-        {program.data?.name ?? 'Program'}
+        {parent.type === 'BOARD' && !parent.isActive ? 'Boards' : parent.name}
       </Link>
     </Button>
+  )
+}
+
+// The Program or Board row in Details, linking to it. A deleted board has no page to link to.
+function ParentDetail({ parent }: { parent: TaskParent }) {
+  const board = parent.type === 'BOARD'
+  const badge = <KeyBadge kind={board ? 'board' : 'program'}>{parent.key}</KeyBadge>
+  return (
+    <Detail icon={board ? SquareKanban : FolderKanban} label={board ? 'Board' : 'Program'}>
+      {board && !parent.isActive ? (
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          {badge} {parent.name} <NotSet>(deleted)</NotSet>
+        </span>
+      ) : (
+        <Link to={parentPath(parent)} className="inline-flex max-w-full items-center gap-2 underline-offset-4 hover:underline">
+          {badge} <span className="truncate">{parent.name}</span>
+        </Link>
+      )}
+    </Detail>
   )
 }
 
@@ -98,7 +114,7 @@ function TaskView({ task, taskRef }: TaskViewProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <BackToProgram programId={task.programId} />
+        <BackToParent parent={task.parent} />
         <div className="relative overflow-hidden rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
           {/* A strip in the status colour; the badge below says what it means. */}
           <div aria-hidden="true" className={cn('absolute inset-x-0 top-0 h-1', TONE_DOT_CLASSES[TASK_STATUS_TONES[task.status]])} />
@@ -132,6 +148,7 @@ function TaskView({ task, taskRef }: TaskViewProps) {
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3">
+                <ParentDetail parent={task.parent} />
                 <AssigneeDetail task={task} taskRef={taskRef} />
                 <Detail icon={UserRoundPen} label="Reporter">
                   {task.reporter.name}
@@ -159,7 +176,7 @@ function TaskView({ task, taskRef }: TaskViewProps) {
         <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-start-1">
           <TaskDescription task={task} taskRef={taskRef} />
           <TaskDependencies task={task} taskRef={taskRef} />
-          <TaskComments programId={task.programId} taskId={task.id} />
+          <TaskComments taskId={task.id} />
         </div>
       </div>
     </div>
@@ -318,11 +335,12 @@ function describeField(task: TaskDetail, field: FieldDetailProps['field']) {
   }
 }
 
-function TaskPageSkeleton({ programId }: { programId: string }) {
+// The parent (program or board) is only known once the task loads, so the back link is a placeholder too.
+function TaskPageSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading task" className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <BackToProgram programId={programId} />
+        <Skeleton className="h-8 w-40" />
         <Skeleton className="h-28 w-full rounded-2xl" />
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">

@@ -7,8 +7,6 @@ export type CreateCommentRequest = components['schemas']['CreateCommentRequest']
 export type EmployeeSummary = components['schemas']['EmployeeSummary']
 // Someone picked from the @-mention list: all a mention token needs.
 export type MentionedPerson = Pick<EmployeeSummary, 'id' | 'name'>
-// What the comments are on: the program itself, or one of its tasks.
-export interface CommentTarget {
-  programId: string
-  taskId?: string
-}
+// What the comments are on: a program itself, or a task (in a program or on a board). Boards have no
+// board-level comments.
+export type CommentTarget = { programId: string } | { taskId: string }

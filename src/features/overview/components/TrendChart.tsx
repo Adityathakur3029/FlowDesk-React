@@ -29,9 +29,11 @@ interface TrendChartProps {
   trend: readonly TrendBucket[]
   granularity: ReportGranularity
   totals: OverviewTotals
+  // Where the tasks are, e.g. "across programs and boards" (SCOPE_TASKS_WHERE).
+  where: string
 }
 
-export function TrendChart({ trend, granularity, totals }: TrendChartProps) {
+export function TrendChart({ trend, granularity, totals, where }: TrendChartProps) {
   const [view, setView] = useState<'chart' | 'table'>('chart')
   const showTable = view === 'table'
 
@@ -41,7 +43,9 @@ export function TrendChart({ trend, granularity, totals }: TrendChartProps) {
         <CardTitle>
           <h2>Tasks created vs completed</h2>
         </CardTitle>
-        <CardDescription>Per {granularity}, across all programs. Dates are in UTC.</CardDescription>
+        <CardDescription>
+          Per {granularity}, {where}. Dates are in UTC.
+        </CardDescription>
         <CardAction>
           <Button type="button" variant="outline" size="sm" aria-pressed={showTable} onClick={() => setView(showTable ? 'chart' : 'table')}>
             {showTable ? <ChartLine aria-hidden="true" /> : <Table2 aria-hidden="true" />}
@@ -132,7 +136,7 @@ function TrendLegend() {
   )
 }
 
-function TrendTable({ trend, granularity, totals }: TrendChartProps) {
+function TrendTable({ trend, granularity, totals }: Omit<TrendChartProps, 'where'>) {
   return (
     <Table>
       <caption className="sr-only">Tasks created and completed per {granularity}</caption>

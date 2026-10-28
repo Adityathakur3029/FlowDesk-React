@@ -1,4 +1,4 @@
-import { ChartColumn, FolderKanban, Users, UsersRound, type LucideIcon } from 'lucide-react'
+import { ChartColumn, FolderKanban, SquareKanban, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import type { Role } from '@/auth/types'
 import { paths } from '@/routes/paths'
 
@@ -13,6 +13,8 @@ export interface NavItem {
 // Add a section by appending here; AppSidebar needs no change.
 export const navItems: NavItem[] = [
   { label: 'Programs', to: paths.programs, icon: FolderKanban },
+  // Any active employee may read boards (GET /boards) and work on their tasks, so no roles.
+  { label: 'Boards', to: paths.boards, icon: SquareKanban },
   // Any active employee may read the report (GET /reports/overview), so no roles.
   { label: 'Overview', to: paths.overview, icon: ChartColumn },
   { label: 'People', to: paths.people, icon: Users },

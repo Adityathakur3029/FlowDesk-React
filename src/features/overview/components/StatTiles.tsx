@@ -4,8 +4,9 @@ import { cn } from '@/lib/utils'
 import { plural } from '../format'
 import type { OverviewReport } from '../types'
 
-// The headline numbers. Values use proportional figures (no tabular-nums) at this size.
-export function StatTiles({ report }: { report: OverviewReport }) {
+// The headline numbers. Values use proportional figures (no tabular-nums) at this size. Without programs
+// (Show: Boards) the program tiles and "at risk" are left out: they'd only ever be 0.
+export function StatTiles({ report, showPrograms }: { report: OverviewReport; showPrograms: boolean }) {
   const { totals, programsByStatus } = report
   const onTimeRate =
     totals.tasksCompletedWithDueDate > 0
@@ -13,13 +14,17 @@ export function StatTiles({ report }: { report: OverviewReport }) {
       : null
 
   return (
-    <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-      <StatTile label="Programs running" value={totals.programs}>
-        {programsByStatus.ACTIVE} active now
-      </StatTile>
-      <StatTile label="Programs completed" value={totals.programsCompleted}>
-        In this period
-      </StatTile>
+    <dl className={cn('grid grid-cols-2 gap-3', showPrograms ? 'md:grid-cols-3 xl:grid-cols-6' : 'xl:grid-cols-4')}>
+      {showPrograms && (
+        <>
+          <StatTile label="Programs running" value={totals.programs}>
+            {programsByStatus.ACTIVE} active now
+          </StatTile>
+          <StatTile label="Programs completed" value={totals.programsCompleted}>
+            In this period
+          </StatTile>
+        </>
+      )}
       <StatTile label="Tasks created" value={totals.tasksCreated}>
         <Delta current={totals.tasksCreated} previous={totals.tasksCreatedPrevious} />
       </StatTile>
@@ -34,10 +39,10 @@ export function StatTiles({ report }: { report: OverviewReport }) {
       <StatTile
         label="Overdue now"
         value={totals.overdueTasks}
-        // Never colour alone: the icon and the "at risk" line say it too.
+        // Never colour alone: the icon says it too.
         icon={totals.overdueTasks > 0 && <TriangleAlert className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
       >
-        {`${plural(totals.programsAtRisk, 'program')} at risk · ${totals.openTasks} open`}
+        {showPrograms ? `${plural(totals.programsAtRisk, 'program')} at risk · ${totals.openTasks} open` : `${totals.openTasks} open`}
       </StatTile>
     </dl>
   )

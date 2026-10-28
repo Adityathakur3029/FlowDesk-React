@@ -2157,6 +2157,525 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/boards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List boards
+         * @description Returns active boards newest first (`createdAt` descending), one page at a time. Filter with `q`.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Case-insensitive substring match on name or key, 1-100 characters */
+                    q?: string;
+                    /** @description Page size, 1-100 */
+                    limit?: number;
+                    /** @description Number of rows to skip */
+                    offset?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of boards */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": [
+                         *         {
+                         *           "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *           "createdAt": "2026-10-28T09:00:00.000Z",
+                         *           "updatedAt": "2026-10-28T09:00:00.000Z",
+                         *           "isActive": true,
+                         *           "key": "PRO",
+                         *           "name": "Product feedback",
+                         *           "description": "Ideas and bugs reported from the field"
+                         *         }
+                         *       ],
+                         *       "meta": {
+                         *         "total": 1,
+                         *         "limit": 20,
+                         *         "offset": 0
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["BoardListResponse"];
+                    };
+                };
+                /** @description Invalid query parameter: `q` outside 1-100 characters, `limit` outside 1-100, or a negative `offset` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "limit",
+                         *           "message": "Too big: expected number to be <=100"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        /**
+         * Create a board
+         * @description Creates a board. `key` is trimmed and uppercased; it becomes the prefix of the board's task keys, can't be changed later, and stays taken after the board is soft-deleted. It only has to be unique among boards: a board and a program can share a key (board `PRO` and program `PRO`), because task numbers are global, so their task keys never collide.
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** ADMIN or MANAGER only; other roles get 403 `FORBIDDEN`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "key": "pro",
+                     *       "name": "Product feedback",
+                     *       "description": "Ideas and bugs reported from the field"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreateBoardRequest"];
+                };
+            };
+            responses: {
+                /** @description Board created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "createdAt": "2026-10-28T09:00:00.000Z",
+                         *         "updatedAt": "2026-10-28T09:00:00.000Z",
+                         *         "isActive": true,
+                         *         "key": "PRO",
+                         *         "name": "Product feedback",
+                         *         "description": "Ideas and bugs reported from the field"
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["BoardResponse"];
+                    };
+                };
+                /** @description The body breaks a validation rule: `key` 2-10 letters or digits starting with a letter, `name` 1-150 characters, `description` at most 10,000 characters or null */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "key",
+                         *           "message": "Key must be 2-10 letters or digits, starting with a letter"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                /** @description `BOARD_KEY_EXISTS`: another board (active or soft-deleted) has this key */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board key PRO is already taken",
+                         *       "code": "BOARD_KEY_EXISTS"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/boards/{boardId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a board
+         * @description Returns one active board.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Board id (UUID) */
+                    boardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The board */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "createdAt": "2026-10-28T09:00:00.000Z",
+                         *         "updatedAt": "2026-10-28T09:00:00.000Z",
+                         *         "isActive": true,
+                         *         "key": "PRO",
+                         *         "name": "Product feedback",
+                         *         "description": "Ideas and bugs reported from the field"
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["BoardResponse"];
+                    };
+                };
+                /** @description `boardId` is not a valid UUID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "boardId",
+                         *           "message": "Invalid UUID"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No active board with this id (soft-deleted boards are not found either) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Soft-delete a board
+         * @description Sets `isActive = false`. Only the board is hidden: it, its task list, its labels and creating tasks in it return 404 afterwards, and it leaves `GET /boards`. **Its tasks stay live**: they can still be fetched, edited, linked, commented on and deleted through `/tasks/{taskRef}` (their `parent.isActive` becomes false), and they still count in `GET /reports/overview` (without a `boards[]` row). The key stays taken. There is no restore endpoint yet.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** ADMIN only; other roles get 403 `FORBIDDEN`.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Board id (UUID) */
+                    boardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Board deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description `boardId` is not a valid UUID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "boardId",
+                         *           "message": "Invalid UUID"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                /** @description No active board with this id (soft-deleted boards are not found either) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Update a board
+         * @description Updates `name` and/or `description` (null clears it). At least one field is required. `key` is immutable: sending it returns 400, as does any other unknown field.
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** ADMIN or MANAGER only; other roles get 403 `FORBIDDEN`.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Board id (UUID) */
+                    boardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "name": "Customer feedback"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UpdateBoardRequest"];
+                };
+            };
+            responses: {
+                /** @description The updated board */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "createdAt": "2026-10-28T09:00:00.000Z",
+                         *         "updatedAt": "2026-10-28T09:00:00.000Z",
+                         *         "isActive": true,
+                         *         "key": "PRO",
+                         *         "name": "Customer feedback",
+                         *         "description": "Ideas and bugs reported from the field"
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["BoardResponse"];
+                    };
+                };
+                /** @description Invalid `boardId`, an empty body, a field breaking its rule, or an attempt to change `key` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                /** @description No active board with this id (soft-deleted boards are not found either) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        trace?: never;
+    };
+    "/boards/{boardId}/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List labels used on a board
+         * @description Distinct labels across the board's active tasks with how many tasks use each, ordered by `taskCount` descending then `label`. Useful for label autocomplete.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Board id (UUID) */
+                    boardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Labels with usage counts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": [
+                         *         {
+                         *           "label": "mobile",
+                         *           "taskCount": 3
+                         *         },
+                         *         {
+                         *           "label": "pricing",
+                         *           "taskCount": 1
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["BoardLabelsResponse"];
+                    };
+                };
+                /** @description `boardId` is not a valid UUID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "boardId",
+                         *           "message": "Invalid UUID"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No active board with this id (soft-deleted boards are not found either) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/programs/{programId}/tasks": {
         parameters: {
             query?: never;
@@ -2165,8 +2684,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List and filter tasks
-         * @description Returns the program's active tasks, one page at a time. Filters combine with AND; comma-separated values within one filter match any. Default order is `number` descending (newest first). Tasks without a due date sort last; `number` breaks ties.
+         * List and filter a program's tasks
+         * @description Returns the program's active tasks, one page at a time. Filters combine with AND; comma-separated values within one filter match any. `createdFrom`/`createdTo` compare the UTC date of `createdAt`, both inclusive (e.g. the last 7 days). Default order is `number` descending (newest first). Tasks without a due date sort last; `number` breaks ties.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -2193,6 +2712,10 @@ export interface paths {
                     dueFrom?: string;
                     /** @description Due on or before this date (YYYY-MM-DD) */
                     dueTo?: string;
+                    /** @description Created on or after this date (YYYY-MM-DD, compared with the UTC date of `createdAt`) */
+                    createdFrom?: string;
+                    /** @description Created on or before this date (YYYY-MM-DD, compared with the UTC date of `createdAt`) */
+                    createdTo?: string;
                     /** @description Filter on the computed `isDependent` flag (the task has at least one dependency) */
                     isDependent?: string;
                     /** @description Case-insensitive substring of the title, or an exact task key (case-insensitive); 1-100 characters */
@@ -2230,6 +2753,14 @@ export interface paths {
                          *           "updatedAt": "2026-10-17T10:00:00.000Z",
                          *           "isActive": true,
                          *           "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "boardId": null,
+                         *           "parent": {
+                         *             "type": "PROGRAM",
+                         *             "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *             "key": "MKT",
+                         *             "name": "Marketing Research",
+                         *             "isActive": true
+                         *           },
                          *           "key": "MKT-7",
                          *           "number": 7,
                          *           "title": "Draft survey questions",
@@ -2268,7 +2799,7 @@ export interface paths {
                         "application/json": components["schemas"]["TaskListResponse"];
                     };
                 };
-                /** @description Invalid path or query parameter: unknown status/priority/type, bad UUID, bad date, `assigneeId` combined with `unassigned`, `dueFrom` after `dueTo`, `limit` outside 1-100… */
+                /** @description Invalid path or query parameter: bad program UUID, unknown status/priority/type, bad UUID, bad date, `assigneeId` combined with `unassigned`, `dueFrom` after `dueTo`, `createdFrom` after `createdTo`, `limit` outside 1-100… */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2279,8 +2810,8 @@ export interface paths {
                          *       "error": "Validation failed",
                          *       "details": [
                          *         {
-                         *           "path": "unassigned",
-                         *           "message": "Use either assigneeId or unassigned, not both"
+                         *           "path": "createdTo",
+                         *           "message": "createdTo must be on or after createdFrom"
                          *         }
                          *       ]
                          *     }
@@ -2308,10 +2839,10 @@ export interface paths {
         };
         put?: never;
         /**
-         * Create a task
-         * @description Creates a task in the program and gives it the next key (`MKT-1`, `MKT-2`…; numbers are never reused). The signed-in employee becomes the reporter. `type` defaults to `TASK`; it is informational and has no rules of its own. `dependsOn` links blockers in the same program; if any is unfinished the task starts as `DEPENDENT`, and the requested status is restored once they are done.
+         * Create a task in a program
+         * @description Creates a task in the program. It takes the next **global** task number (shared by every program and board, never reused) and the key `<program key>-<number>`, e.g. `MKT-7`. The signed-in employee becomes the reporter. `type` defaults to `TASK`; it is informational and has no rules of its own. `dependsOn` links blockers in the same program; if any is unfinished the task starts as `DEPENDENT`, and the requested status is restored once they are done. The parent can't change later.
          *
-         *     Rules, in order: the program must be active (404); `assigneeId` must be an active employee (400 `ASSIGNEE_NOT_FOUND`); `dueDate` on or after `startDate` (400 `INVALID_DATE_RANGE`); each `dependsOn` id an active task (400 `DEPENDENCY_TASK_NOT_FOUND`) in this program (400 `DEPENDENCY_OTHER_PROGRAM`); `status: DONE` with an unfinished blocker is rejected (409 `TASK_BLOCKED`).
+         *     Rules, in order: the program must be active (404); `assigneeId` must be an active employee (400 `ASSIGNEE_NOT_FOUND`); `dueDate` on or after `startDate` (400 `INVALID_DATE_RANGE`); each `dependsOn` id an active task (400 `DEPENDENCY_TASK_NOT_FOUND`) in this program (400 `DEPENDENCY_OTHER_PARENT`); `status: DONE` with an unfinished blocker is rejected (409 `TASK_BLOCKED`).
          *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
@@ -2369,6 +2900,14 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:00:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
                          *         "key": "MKT-7",
                          *         "number": 7,
                          *         "title": "Draft survey questions",
@@ -2468,6 +3007,328 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/boards/{boardId}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List and filter a board's tasks
+         * @description Returns the board's active tasks, one page at a time. Filters combine with AND; comma-separated values within one filter match any. `createdFrom`/`createdTo` compare the UTC date of `createdAt`, both inclusive (e.g. the last 7 days). Default order is `number` descending (newest first). Tasks without a due date sort last; `number` breaks ties.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Comma-separated task statuses; matches any (e.g. `IN_PROGRESS,DEPENDENT`) */
+                    status?: string;
+                    /** @description Comma-separated priorities; matches any */
+                    priority?: string;
+                    /** @description Comma-separated task types; matches any (e.g. `PRE,POST`) */
+                    type?: string;
+                    /** @description Employee UUID, or `me` for the signed-in employee. Can't be combined with `unassigned`. */
+                    assigneeId?: "me" | string;
+                    /** @description true: only tasks with no assignee. Can't be combined with `assigneeId`. */
+                    unassigned?: string;
+                    /** @description Employee UUID, or `me` for the signed-in employee */
+                    reporterId?: "me" | string;
+                    /** @description Comma-separated labels (normalised like `labels`); matches tasks with any of them */
+                    label?: string;
+                    /** @description Due on or after this date (YYYY-MM-DD) */
+                    dueFrom?: string;
+                    /** @description Due on or before this date (YYYY-MM-DD) */
+                    dueTo?: string;
+                    /** @description Created on or after this date (YYYY-MM-DD, compared with the UTC date of `createdAt`) */
+                    createdFrom?: string;
+                    /** @description Created on or before this date (YYYY-MM-DD, compared with the UTC date of `createdAt`) */
+                    createdTo?: string;
+                    /** @description Filter on the computed `isDependent` flag (the task has at least one dependency) */
+                    isDependent?: string;
+                    /** @description Case-insensitive substring of the title, or an exact task key (case-insensitive); 1-100 characters */
+                    q?: string;
+                    /** @description Sort field. `type` sorts PRE < TASK < POST < BUG < ISSUE. Tasks without a due date sort last; `number` breaks ties. */
+                    sort?: "number" | "createdAt" | "updatedAt" | "dueDate" | "priority" | "type";
+                    /** @description Sort direction */
+                    order?: "asc" | "desc";
+                    /** @description Page size, 1-100 */
+                    limit?: number;
+                    /** @description Number of rows to skip */
+                    offset?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Board id (UUID) */
+                    boardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of tasks */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": [
+                         *         {
+                         *           "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *           "createdAt": "2026-10-17T10:00:00.000Z",
+                         *           "updatedAt": "2026-10-17T10:00:00.000Z",
+                         *           "isActive": true,
+                         *           "programId": null,
+                         *           "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *           "parent": {
+                         *             "type": "BOARD",
+                         *             "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *             "key": "PRO",
+                         *             "name": "Product feedback",
+                         *             "isActive": true
+                         *           },
+                         *           "key": "PRO-50",
+                         *           "number": 50,
+                         *           "title": "Export fails on large reports",
+                         *           "description": "Cover pricing, channels and brand recall.",
+                         *           "type": "BUG",
+                         *           "status": "IN_PROGRESS",
+                         *           "priority": "HIGH",
+                         *           "assignee": {
+                         *             "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *             "name": "Jane Doe",
+                         *             "emailId": "jane.doe@saajha.org"
+                         *           },
+                         *           "reporter": {
+                         *             "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *             "name": "Ravi Kumar",
+                         *             "emailId": "ravi.kumar@saajha.org"
+                         *           },
+                         *           "startDate": "2026-10-20",
+                         *           "dueDate": "2026-10-31",
+                         *           "estimateMinutes": 480,
+                         *           "labels": [
+                         *             "export"
+                         *           ],
+                         *           "completedAt": null,
+                         *           "isDependent": false
+                         *         }
+                         *       ],
+                         *       "meta": {
+                         *         "total": 1,
+                         *         "limit": 20,
+                         *         "offset": 0
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["TaskListResponse"];
+                    };
+                };
+                /** @description Invalid path or query parameter: bad board UUID, unknown status/priority/type, bad UUID, bad date, `assigneeId` combined with `unassigned`, `dueFrom` after `dueTo`, `createdFrom` after `createdTo`, `limit` outside 1-100… */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "createdTo",
+                         *           "message": "createdTo must be on or after createdFrom"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No active board with this id (soft-deleted boards are not found either) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        /**
+         * Create a task in a board
+         * @description Creates a task in the board. It takes the next **global** task number (shared by every program and board, never reused) and the key `<board key>-<number>`, e.g. `PRO-50`. The signed-in employee becomes the reporter. `type` defaults to `TASK`; it is informational and has no rules of its own. `dependsOn` links blockers in the same board; if any is unfinished the task starts as `DEPENDENT`, and the requested status is restored once they are done. The parent can't change later.
+         *
+         *     Rules, in order: the board must be active (404); `assigneeId` must be an active employee (400 `ASSIGNEE_NOT_FOUND`); `dueDate` on or after `startDate` (400 `INVALID_DATE_RANGE`); each `dependsOn` id an active task (400 `DEPENDENCY_TASK_NOT_FOUND`) in this board (400 `DEPENDENCY_OTHER_PARENT`); `status: DONE` with an unfinished blocker is rejected (409 `TASK_BLOCKED`).
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Board id (UUID) */
+                    boardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "Draft survey questions",
+                     *       "description": "Cover pricing, channels and brand recall.",
+                     *       "type": "PRE",
+                     *       "status": "IN_PROGRESS",
+                     *       "priority": "HIGH",
+                     *       "assigneeId": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                     *       "startDate": "2026-10-20",
+                     *       "dueDate": "2026-10-31",
+                     *       "estimateMinutes": 480,
+                     *       "labels": [
+                     *         "Survey",
+                     *         "q4"
+                     *       ],
+                     *       "dependsOn": [
+                     *         "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f"
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description Task created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "createdAt": "2026-10-17T10:00:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:00:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": null,
+                         *         "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "parent": {
+                         *           "type": "BOARD",
+                         *           "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *           "key": "PRO",
+                         *           "name": "Product feedback",
+                         *           "isActive": true
+                         *         },
+                         *         "key": "PRO-50",
+                         *         "number": 50,
+                         *         "title": "Export fails on large reports",
+                         *         "description": "Cover pricing, channels and brand recall.",
+                         *         "type": "BUG",
+                         *         "status": "IN_PROGRESS",
+                         *         "priority": "HIGH",
+                         *         "assignee": {
+                         *           "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *           "name": "Jane Doe",
+                         *           "emailId": "jane.doe@saajha.org"
+                         *         },
+                         *         "reporter": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "startDate": "2026-10-20",
+                         *         "dueDate": "2026-10-31",
+                         *         "estimateMinutes": 480,
+                         *         "labels": [
+                         *           "export"
+                         *         ],
+                         *         "completedAt": null,
+                         *         "isDependent": false,
+                         *         "dependsOn": [],
+                         *         "blocks": []
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["TaskDetailResponse"];
+                    };
+                };
+                /** @description A field breaks its validation rule (listed in `details`), or a business rule failed (`code`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No active board with this id (soft-deleted boards are not found either) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Board not found"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TASK_BLOCKED`: `status: DONE` was requested while a task in `dependsOn` is not DONE */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Task is blocked by unfinished dependencies",
+                         *       "code": "TASK_BLOCKED",
+                         *       "details": {
+                         *         "blockers": [
+                         *           {
+                         *             "id": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f",
+                         *             "key": "MKT-3",
+                         *             "title": "Finalise sample",
+                         *             "status": "IN_PROGRESS"
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/programs/{programId}/tasks/{taskRef}": {
         parameters: {
             query?: never;
@@ -2477,7 +3338,7 @@ export interface paths {
         };
         /**
          * Get a task by id or key
-         * @description Returns one task with both sides of its dependency links (`dependsOn`, `blocks`). `taskRef` is the task UUID or its key (case-insensitive, e.g. `mkt-7`). A key or UUID of a task in another program returns 404.
+         * @description Returns one task with its `parent` and both sides of its dependency links (`dependsOn`, `blocks`). `taskRef` is the task UUID or its key (case-insensitive, e.g. `mkt-7`). The task must be in this program: a key or UUID of a task in another program, or on a board, returns 404. `/tasks/{taskRef}` finds any task.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -2511,6 +3372,14 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:00:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
                          *         "key": "MKT-7",
                          *         "number": 7,
                          *         "title": "Draft survey questions",
@@ -2559,7 +3428,7 @@ export interface paths {
                         "application/json": components["schemas"]["TaskDetailResponse"];
                     };
                 };
-                /** @description `programId` is not a UUID, or `taskRef` is neither a UUID nor a task key */
+                /** @description Invalid `programId` or `taskRef` */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2596,7 +3465,7 @@ export interface paths {
         post?: never;
         /**
          * Soft-delete a task
-         * @description Sets `isActive = false` and removes every dependency link on either side of the task. Tasks it blocked are re-evaluated, so a task whose only open blocker this was leaves `DEPENDENT`. The task's number is not reused.
+         * @description Sets `isActive = false` and removes every dependency link on either side of the task. Tasks it blocked are re-evaluated, so a task whose only open blocker this was leaves `DEPENDENT`. The task's number is not reused. The task must be in this program: a key or UUID of a task in another program, or on a board, returns 404. `/tasks/{taskRef}` finds any task.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -2661,7 +3530,7 @@ export interface paths {
         head?: never;
         /**
          * Update a task
-         * @description Updates any subset of the task's fields; at least one is required. Nullable fields accept null to clear them, and `labels` replaces the whole list. `type` can change at any time, including on `DONE` and `DEPENDENT` tasks, and never changes the status. Dependencies change only through the dependency endpoints, so `dependsOn` is rejected.
+         * @description Updates any subset of the task's fields; at least one is required. Nullable fields accept null to clear them, and `labels` replaces the whole list. `type` can change at any time, including on `DONE` and `DEPENDENT` tasks, and never changes the status. Dependencies change only through the dependency endpoints, so `dependsOn` is rejected, and the parent is fixed, so `programId`/`boardId` are rejected too. The task must be in this program: a key or UUID of a task in another program, or on a board, returns 404. `/tasks/{taskRef}` finds any task.
          *
          *     Rules, in order: `assigneeId` must be an active employee (400 `ASSIGNEE_NOT_FOUND`); the **merged** `startDate`/`dueDate` must be in order (400 `INVALID_DATE_RANGE`); then the status rules.
          *
@@ -2715,6 +3584,14 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:00:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
                          *         "key": "MKT-7",
                          *         "number": 7,
                          *         "title": "Draft survey questions",
@@ -2823,9 +3700,9 @@ export interface paths {
         put?: never;
         /**
          * Add a blocker (task depends on another task)
-         * @description Records that the task is blocked by `dependsOnTaskId`. If the blocker isn't DONE, the task becomes `DEPENDENT` and its current status is remembered.
+         * @description Records that the task is blocked by `dependsOnTaskId`. If the blocker isn't DONE, the task becomes `DEPENDENT` and its current status is remembered. The task must be in this program: a key or UUID of a task in another program, or on a board, returns 404. `/tasks/{taskRef}` finds any task.
          *
-         *     Rules, in order: the blocker is an active task (400 `DEPENDENCY_TASK_NOT_FOUND`) in the same program (400 `DEPENDENCY_OTHER_PROGRAM`); not the task itself (400 `SELF_DEPENDENCY`); not already linked (409 `DEPENDENCY_EXISTS`); the task has fewer than 50 dependencies (400 `DEPENDENCY_LIMIT_REACHED`); the link doesn't create a cycle (409 `DEPENDENCY_CYCLE`); a DONE task can't get an unfinished blocker (409 `TASK_DONE`).
+         *     Rules, in order: the blocker is an active task (400 `DEPENDENCY_TASK_NOT_FOUND`) with the same parent, i.e. in the same program or the same board (400 `DEPENDENCY_OTHER_PARENT`); not the task itself (400 `SELF_DEPENDENCY`); not already linked (409 `DEPENDENCY_EXISTS`); the task has fewer than 50 dependencies (400 `DEPENDENCY_LIMIT_REACHED`); the link doesn't create a cycle (409 `DEPENDENCY_CYCLE`); a DONE task can't get an unfinished blocker (409 `TASK_DONE`).
          *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
@@ -2870,6 +3747,14 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:00:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
                          *         "key": "MKT-7",
                          *         "number": 7,
                          *         "title": "Draft survey questions",
@@ -2967,7 +3852,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a blocker
-         * @description Deletes the link. If that was the task's last open blocker, it leaves `DEPENDENT` and gets its previous status back. Returns 200 with the task (not 204) because its status may have just changed.
+         * @description Deletes the link. If that was the task's last open blocker, it leaves `DEPENDENT` and gets its previous status back. Returns 200 with the task (not 204) because its status may have just changed. The task must be in this program: a key or UUID of a task in another program, or on a board, returns 404. `/tasks/{taskRef}` finds any task.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -3003,6 +3888,14 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:00:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
                          *         "key": "MKT-7",
                          *         "number": 7,
                          *         "title": "Draft survey questions",
@@ -3044,7 +3937,7 @@ export interface paths {
                         "application/json": components["schemas"]["TaskDetailResponse"];
                     };
                 };
-                /** @description Invalid `programId`, `taskRef` or `dependsOnTaskId` */
+                /** @description Invalid `programId` or `taskRef` or `dependsOnTaskId` */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -3066,6 +3959,642 @@ export interface paths {
                 };
                 401: components["responses"]["Unauthorized"];
                 /** @description Unknown program or task, or the task doesn't depend on `dependsOnTaskId` */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskRef}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a task by id or key
+         * @description Returns one task with its `parent` and both sides of its dependency links (`dependsOn`, `blocks`). `taskRef` is the task UUID or its key (case-insensitive, e.g. `mkt-7`). Works for **every** task, in a program or on a board (e.g. `/tasks/PRO-50`). A task in a soft-deleted program is 404; a task on a soft-deleted board is still found (its `parent.isActive` is false).
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The task */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "createdAt": "2026-10-17T10:00:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:00:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
+                         *         "key": "MKT-7",
+                         *         "number": 7,
+                         *         "title": "Draft survey questions",
+                         *         "description": "Cover pricing, channels and brand recall.",
+                         *         "type": "PRE",
+                         *         "status": "DEPENDENT",
+                         *         "priority": "HIGH",
+                         *         "assignee": {
+                         *           "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *           "name": "Jane Doe",
+                         *           "emailId": "jane.doe@saajha.org"
+                         *         },
+                         *         "reporter": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "startDate": "2026-10-20",
+                         *         "dueDate": "2026-10-31",
+                         *         "estimateMinutes": 480,
+                         *         "labels": [
+                         *           "survey",
+                         *           "q4"
+                         *         ],
+                         *         "completedAt": null,
+                         *         "isDependent": true,
+                         *         "dependsOn": [
+                         *           {
+                         *             "id": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f",
+                         *             "key": "MKT-3",
+                         *             "title": "Finalise sample",
+                         *             "status": "IN_PROGRESS"
+                         *           }
+                         *         ],
+                         *         "blocks": [
+                         *           {
+                         *             "id": "3f4a5b6c-7d8e-4f90-a1b2-c3d4e5f6a7b8",
+                         *             "key": "MKT-9",
+                         *             "title": "Run survey",
+                         *             "status": "DEPENDENT"
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["TaskDetailResponse"];
+                    };
+                };
+                /** @description Invalid `taskRef` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "taskRef",
+                         *           "message": "Must be a task UUID or a task key like MKT-7"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No such task: unknown, soft-deleted, or in a soft-deleted program */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Soft-delete a task
+         * @description Sets `isActive = false` and removes every dependency link on either side of the task. Tasks it blocked are re-evaluated, so a task whose only open blocker this was leaves `DEPENDENT`. The task's number is not reused. Works for **every** task, in a program or on a board (e.g. `/tasks/PRO-50`). A task in a soft-deleted program is 404; a task on a soft-deleted board is still found (its `parent.isActive` is false).
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** ADMIN or MANAGER, or the task's **reporter** (any role). Anyone else gets 403 `FORBIDDEN`.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Task deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid `taskRef` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "taskRef",
+                         *           "message": "Must be a task UUID or a task key like MKT-7"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                /** @description No such task: unknown, soft-deleted, or in a soft-deleted program */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Update a task
+         * @description Updates any subset of the task's fields; at least one is required. Nullable fields accept null to clear them, and `labels` replaces the whole list. `type` can change at any time, including on `DONE` and `DEPENDENT` tasks, and never changes the status. Dependencies change only through the dependency endpoints, so `dependsOn` is rejected, and the parent is fixed, so `programId`/`boardId` are rejected too. Works for **every** task, in a program or on a board (e.g. `/tasks/PRO-50`). A task in a soft-deleted program is 404; a task on a soft-deleted board is still found (its `parent.isActive` is false).
+         *
+         *     Rules, in order: `assigneeId` must be an active employee (400 `ASSIGNEE_NOT_FOUND`); the **merged** `startDate`/`dueDate` must be in order (400 `INVALID_DATE_RANGE`); then the status rules.
+         *
+         *     **Status rules:** `DEPENDENT` can't be sent (400); it is set automatically while the task has an unfinished blocker, and the previous status comes back when the last open blocker is done or removed. While a task is `DEPENDENT`, any `status` change returns 409 `TASK_BLOCKED` with the open blockers in `details.blockers`. Moving to `DONE` sets `completedAt`; leaving `DONE` clears it. Reopening a `DONE` task that has open blockers saves it as `DEPENDENT` and remembers the requested status. When a task moves into or out of `DONE`, the tasks it blocks are re-evaluated.
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "DONE",
+                     *       "labels": [
+                     *         "survey",
+                     *         "q4",
+                     *         "done"
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UpdateTaskRequest"];
+                };
+            };
+            responses: {
+                /** @description The updated task */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "createdAt": "2026-10-17T10:00:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:00:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
+                         *         "key": "MKT-7",
+                         *         "number": 7,
+                         *         "title": "Draft survey questions",
+                         *         "description": "Cover pricing, channels and brand recall.",
+                         *         "type": "PRE",
+                         *         "status": "DONE",
+                         *         "priority": "HIGH",
+                         *         "assignee": {
+                         *           "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *           "name": "Jane Doe",
+                         *           "emailId": "jane.doe@saajha.org"
+                         *         },
+                         *         "reporter": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "startDate": "2026-10-20",
+                         *         "dueDate": "2026-10-31",
+                         *         "estimateMinutes": 480,
+                         *         "labels": [
+                         *           "survey",
+                         *           "q4"
+                         *         ],
+                         *         "completedAt": "2026-10-30T16:20:00.000Z",
+                         *         "isDependent": true,
+                         *         "dependsOn": [
+                         *           {
+                         *             "id": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f",
+                         *             "key": "MKT-3",
+                         *             "title": "Finalise sample",
+                         *             "status": "DONE"
+                         *           }
+                         *         ],
+                         *         "blocks": [
+                         *           {
+                         *             "id": "3f4a5b6c-7d8e-4f90-a1b2-c3d4e5f6a7b8",
+                         *             "key": "MKT-9",
+                         *             "title": "Run survey",
+                         *             "status": "DEPENDENT"
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["TaskDetailResponse"];
+                    };
+                };
+                /** @description Invalid params or body, or a business rule failed (`code`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No such task: unknown, soft-deleted, or in a soft-deleted program */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description `TASK_BLOCKED`: the task is DEPENDENT, so its status can't be changed until its blockers are done or removed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Task is blocked by unfinished dependencies",
+                         *       "code": "TASK_BLOCKED",
+                         *       "details": {
+                         *         "blockers": [
+                         *           {
+                         *             "id": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f",
+                         *             "key": "MKT-3",
+                         *             "title": "Finalise sample",
+                         *             "status": "IN_PROGRESS"
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        trace?: never;
+    };
+    "/tasks/{taskRef}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a blocker (task depends on another task)
+         * @description Records that the task is blocked by `dependsOnTaskId`. If the blocker isn't DONE, the task becomes `DEPENDENT` and its current status is remembered. Works for **every** task, in a program or on a board (e.g. `/tasks/PRO-50`). A task in a soft-deleted program is 404; a task on a soft-deleted board is still found (its `parent.isActive` is false).
+         *
+         *     Rules, in order: the blocker is an active task (400 `DEPENDENCY_TASK_NOT_FOUND`) with the same parent, i.e. in the same program or the same board (400 `DEPENDENCY_OTHER_PARENT`); not the task itself (400 `SELF_DEPENDENCY`); not already linked (409 `DEPENDENCY_EXISTS`); the task has fewer than 50 dependencies (400 `DEPENDENCY_LIMIT_REACHED`); the link doesn't create a cycle (409 `DEPENDENCY_CYCLE`); a DONE task can't get an unfinished blocker (409 `TASK_DONE`).
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "dependsOnTaskId": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AddDependencyRequest"];
+                };
+            };
+            responses: {
+                /** @description Dependency added; the dependent task with its (possibly new) status */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "createdAt": "2026-10-17T10:00:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:00:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
+                         *         "key": "MKT-7",
+                         *         "number": 7,
+                         *         "title": "Draft survey questions",
+                         *         "description": "Cover pricing, channels and brand recall.",
+                         *         "type": "PRE",
+                         *         "status": "DEPENDENT",
+                         *         "priority": "HIGH",
+                         *         "assignee": {
+                         *           "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *           "name": "Jane Doe",
+                         *           "emailId": "jane.doe@saajha.org"
+                         *         },
+                         *         "reporter": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "startDate": "2026-10-20",
+                         *         "dueDate": "2026-10-31",
+                         *         "estimateMinutes": 480,
+                         *         "labels": [
+                         *           "survey",
+                         *           "q4"
+                         *         ],
+                         *         "completedAt": null,
+                         *         "isDependent": true,
+                         *         "dependsOn": [
+                         *           {
+                         *             "id": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f",
+                         *             "key": "MKT-3",
+                         *             "title": "Finalise sample",
+                         *             "status": "IN_PROGRESS"
+                         *           }
+                         *         ],
+                         *         "blocks": [
+                         *           {
+                         *             "id": "3f4a5b6c-7d8e-4f90-a1b2-c3d4e5f6a7b8",
+                         *             "key": "MKT-9",
+                         *             "title": "Run survey",
+                         *             "status": "DEPENDENT"
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["TaskDetailResponse"];
+                    };
+                };
+                /** @description Invalid params or body, or a dependency rule failed (`code`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No such task: unknown, soft-deleted, or in a soft-deleted program */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The link already exists, would create a cycle, or would block a DONE task */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskRef}/dependencies/{dependsOnTaskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a blocker
+         * @description Deletes the link. If that was the task's last open blocker, it leaves `DEPENDENT` and gets its previous status back. Returns 200 with the task (not 204) because its status may have just changed. Works for **every** task, in a program or on a board (e.g. `/tasks/PRO-50`). A task in a soft-deleted program is 404; a task on a soft-deleted board is still found (its `parent.isActive` is false).
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                    /** @description Id of the blocking task to unlink */
+                    dependsOnTaskId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Dependency removed; the task with its (possibly restored) status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "createdAt": "2026-10-17T10:00:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:00:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
+                         *         "parent": {
+                         *           "type": "PROGRAM",
+                         *           "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *           "key": "MKT",
+                         *           "name": "Marketing Research",
+                         *           "isActive": true
+                         *         },
+                         *         "key": "MKT-7",
+                         *         "number": 7,
+                         *         "title": "Draft survey questions",
+                         *         "description": "Cover pricing, channels and brand recall.",
+                         *         "type": "PRE",
+                         *         "status": "IN_PROGRESS",
+                         *         "priority": "HIGH",
+                         *         "assignee": {
+                         *           "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *           "name": "Jane Doe",
+                         *           "emailId": "jane.doe@saajha.org"
+                         *         },
+                         *         "reporter": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "startDate": "2026-10-20",
+                         *         "dueDate": "2026-10-31",
+                         *         "estimateMinutes": 480,
+                         *         "labels": [
+                         *           "survey",
+                         *           "q4"
+                         *         ],
+                         *         "completedAt": null,
+                         *         "isDependent": false,
+                         *         "dependsOn": [],
+                         *         "blocks": [
+                         *           {
+                         *             "id": "3f4a5b6c-7d8e-4f90-a1b2-c3d4e5f6a7b8",
+                         *             "key": "MKT-9",
+                         *             "title": "Run survey",
+                         *             "status": "DEPENDENT"
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["TaskDetailResponse"];
+                    };
+                };
+                /** @description Invalid `taskRef` or `dependsOnTaskId` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "dependsOnTaskId",
+                         *           "message": "Invalid UUID"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description Unknown task, or the task doesn't depend on `dependsOnTaskId` */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -3168,7 +4697,7 @@ export interface paths {
          * Comment on a program (or reply)
          * @description Adds a program-level comment, or a reply to one when `parentId` is set. The signed-in employee is the author. Comments are allowed on programs in any status.
          *
-         *     Rules, in order: the target must be active (404); if `parentId` is sent, the parent must be an active comment in this program (400 `PARENT_COMMENT_NOT_FOUND`) on the same task or program (400 `PARENT_TARGET_MISMATCH`) and itself top-level (400 `NESTED_REPLY`); the body may mention at most 20 distinct people (400 `TOO_MANY_MENTIONS`), each an active employee (400 `MENTION_NOT_FOUND`). The comment and its mentions are saved in one transaction. Self-mentions are allowed.
+         *     Rules, in order: the target must be active (404); if `parentId` is sent, the parent must be an active comment in this program or board (400 `PARENT_COMMENT_NOT_FOUND`) on the same task or program (400 `PARENT_TARGET_MISMATCH`) and itself top-level (400 `NESTED_REPLY`); the body may mention at most 20 distinct people (400 `TOO_MANY_MENTIONS`), each an active employee (400 `MENTION_NOT_FOUND`). The comment and its mentions are saved in one transaction. Self-mentions are allowed.
          *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
@@ -3211,6 +4740,7 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:30:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
                          *         "taskId": null,
                          *         "parentId": null,
                          *         "author": {
@@ -3350,7 +4880,7 @@ export interface paths {
          * Comment on a task (or reply)
          * @description Adds a comment to the task, or a reply to one of its comments when `parentId` is set. The signed-in employee is the author. `taskRef` is the task UUID or its key (case-insensitive). Comments are allowed on tasks in any status, including DONE.
          *
-         *     Rules, in order: the target must be active (404); if `parentId` is sent, the parent must be an active comment in this program (400 `PARENT_COMMENT_NOT_FOUND`) on the same task or program (400 `PARENT_TARGET_MISMATCH`) and itself top-level (400 `NESTED_REPLY`); the body may mention at most 20 distinct people (400 `TOO_MANY_MENTIONS`), each an active employee (400 `MENTION_NOT_FOUND`). The comment and its mentions are saved in one transaction. Self-mentions are allowed.
+         *     Rules, in order: the target must be active (404); if `parentId` is sent, the parent must be an active comment in this program or board (400 `PARENT_COMMENT_NOT_FOUND`) on the same task or program (400 `PARENT_TARGET_MISMATCH`) and itself top-level (400 `NESTED_REPLY`); the body may mention at most 20 distinct people (400 `TOO_MANY_MENTIONS`), each an active employee (400 `MENTION_NOT_FOUND`). The comment and its mentions are saved in one transaction. Self-mentions are allowed.
          *
          *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
          *
@@ -3395,6 +4925,7 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:30:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
                          *         "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
                          *         "parentId": null,
                          *         "author": {
@@ -3455,7 +4986,7 @@ export interface paths {
         };
         /**
          * Get a comment
-         * @description Returns one program or task comment; a top-level comment comes with its active replies. This is the target for deep links.
+         * @description Returns one program comment or a comment on one of the program's tasks; a top-level comment comes with its active replies. This is the target for deep links. Comments on **board** tasks are served by `/tasks/{taskRef}/comments/{commentId}`.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -3489,6 +5020,7 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T10:30:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
                          *         "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
                          *         "parentId": null,
                          *         "author": {
@@ -3512,6 +5044,7 @@ export interface paths {
                          *             "updatedAt": "2026-10-17T11:05:00.000Z",
                          *             "isActive": true,
                          *             "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *             "boardId": null,
                          *             "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
                          *             "parentId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
                          *             "author": {
@@ -3693,6 +5226,7 @@ export interface paths {
                          *         "updatedAt": "2026-10-17T11:30:00.000Z",
                          *         "isActive": true,
                          *         "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *         "boardId": null,
                          *         "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
                          *         "parentId": null,
                          *         "author": {
@@ -3716,6 +5250,7 @@ export interface paths {
                          *             "updatedAt": "2026-10-17T11:05:00.000Z",
                          *             "isActive": true,
                          *             "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+                         *             "boardId": null,
                          *             "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
                          *             "parentId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
                          *             "author": {
@@ -3773,6 +5308,513 @@ export interface paths {
         };
         trace?: never;
     };
+    "/tasks/{taskRef}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a task's comments (any task)
+         * @description Returns top-level comments, one page of threads at a time, each with all of its active replies (oldest first) and mentions. `limit`/`offset` page **threads**, and `meta.total` counts them. A deleted top-level comment is listed as a tombstone while it still has active replies; deleted replies are never listed. `taskRef` is the task UUID or its key (case-insensitive, e.g. `pro-50`). Works for every task, in a program or on a board; a task in a soft-deleted program is 404, a task on a soft-deleted board still works.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Order of top-level comments by `createdAt`: `asc` (oldest first, the default) or `desc`. Replies are always oldest first. */
+                    order?: "asc" | "desc";
+                    /** @description Threads (top-level comments) per page, 1-100. Each comes with all of its replies. */
+                    limit?: number;
+                    /** @description Number of threads to skip */
+                    offset?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of threads */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentListResponse"];
+                    };
+                };
+                /** @description Invalid `taskRef`, `order`, `limit` or `offset` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "taskRef",
+                         *           "message": "Must be a task UUID or a task key like MKT-7"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No such task: unknown, soft-deleted, or in a soft-deleted program (a soft-deleted board's tasks are still found) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        /**
+         * Comment on a task (any task), or reply
+         * @description Adds a comment to the task, or a reply to one of its comments when `parentId` is set. The signed-in employee is the author. `taskRef` is the task UUID or its key (case-insensitive, e.g. `pro-50`). Works for every task, in a program or on a board; a task in a soft-deleted program is 404, a task on a soft-deleted board still works. Comments are allowed on tasks in any status, including DONE.
+         *
+         *     Rules, in order: the target must be active (404); if `parentId` is sent, the parent must be an active comment in this program or board (400 `PARENT_COMMENT_NOT_FOUND`) on the same task or program (400 `PARENT_TARGET_MISMATCH`) and itself top-level (400 `NESTED_REPLY`); the body may mention at most 20 distinct people (400 `TOO_MANY_MENTIONS`), each an active employee (400 `MENTION_NOT_FOUND`). The comment and its mentions are saved in one transaction. Self-mentions are allowed.
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "body": "Reproduced with a 40 MB report, @[Jane Doe](mention:baac08e5-eaef-46f0-ac9e-f8b7266c71e0) can you take it?"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CreateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description Comment created; a top-level comment comes back with `replies: []` */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+                         *         "createdAt": "2026-10-17T10:30:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:30:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": null,
+                         *         "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "parentId": null,
+                         *         "author": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "body": "Reproduced with a 40 MB report, @[Jane Doe](mention:baac08e5-eaef-46f0-ac9e-f8b7266c71e0) can you take it?",
+                         *         "editedAt": null,
+                         *         "mentions": [
+                         *           {
+                         *             "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *             "name": "Jane Doe",
+                         *             "emailId": "jane.doe@saajha.org"
+                         *           }
+                         *         ],
+                         *         "replies": []
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["CommentResponse"];
+                    };
+                };
+                /** @description Invalid params or body, or a reply/mention rule failed (`code`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description No such task: unknown, soft-deleted, or in a soft-deleted program (a soft-deleted board's tasks are still found) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskRef}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a task comment
+         * @description Returns one comment on this task; a top-level comment comes with its active replies. The comment must be on this task: an id from another task is 404. `taskRef` is the task UUID or its key (case-insensitive, e.g. `pro-50`). Works for every task, in a program or on a board; a task in a soft-deleted program is 404, a task on a soft-deleted board still works.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** any active employee.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                    /** @description Comment id (UUID) */
+                    commentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The comment */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+                         *         "createdAt": "2026-10-17T10:30:00.000Z",
+                         *         "updatedAt": "2026-10-17T10:30:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": null,
+                         *         "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "parentId": null,
+                         *         "author": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "body": "Reproduced with a 40 MB report, @[Jane Doe](mention:baac08e5-eaef-46f0-ac9e-f8b7266c71e0) can you take it?",
+                         *         "editedAt": null,
+                         *         "mentions": [
+                         *           {
+                         *             "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *             "name": "Jane Doe",
+                         *             "emailId": "jane.doe@saajha.org"
+                         *           }
+                         *         ],
+                         *         "replies": [
+                         *           {
+                         *             "id": "9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f",
+                         *             "createdAt": "2026-10-17T11:05:00.000Z",
+                         *             "updatedAt": "2026-10-17T11:05:00.000Z",
+                         *             "isActive": true,
+                         *             "programId": null,
+                         *             "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *             "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *             "parentId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+                         *             "author": {
+                         *               "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *               "name": "Jane Doe",
+                         *               "emailId": "jane.doe@saajha.org"
+                         *             },
+                         *             "body": "Looks good, two small notes inline.",
+                         *             "editedAt": null,
+                         *             "mentions": []
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["CommentResponse"];
+                    };
+                };
+                /** @description `taskRef` is neither a UUID nor a task key, or `commentId` is not a valid UUID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "taskRef",
+                         *           "message": "Must be a task UUID or a task key like MKT-7"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description The task isn't found (as above), or the comment is missing, deleted (including tombstones), or not on this task */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Delete a task comment
+         * @description Same as `DELETE /programs/{programId}/comments/{commentId}`, for a comment on this task (any task, including board tasks). Soft-deletes the comment and removes its mention records; replies are kept, and a deleted top-level comment with active replies is listed as a tombstone. `taskRef` is the task UUID or its key (case-insensitive, e.g. `pro-50`). Works for every task, in a program or on a board; a task in a soft-deleted program is 404, a task on a soft-deleted board still works.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** ADMIN or MANAGER, or the comment's **author** (any role). Anyone else gets 403 `FORBIDDEN`.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                    /** @description Comment id (UUID) */
+                    commentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Comment deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description `taskRef` is neither a UUID nor a task key, or `commentId` is not a valid UUID */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "Validation failed",
+                         *       "details": [
+                         *         {
+                         *           "path": "taskRef",
+                         *           "message": "Must be a task UUID or a task key like MKT-7"
+                         *         }
+                         *       ]
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ValidationErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description `FORBIDDEN`: the caller is a MEMBER who isn't the comment's author */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "You do not have permission to perform this action",
+                         *       "code": "FORBIDDEN"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The task isn't found (as above), or the comment is missing, deleted (including tombstones), or not on this task */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Edit a task comment
+         * @description Same as `PATCH /programs/{programId}/comments/{commentId}`, for a comment on this task (any task, including board tasks). Replaces the body and sets `editedAt`; mentions are re-parsed and diffed.
+         *
+         *     Rules, in order: the task and the comment must exist (404); the caller must be its author (403 `FORBIDDEN`); then the mention rules (400 `TOO_MANY_MENTIONS`, 400 `MENTION_NOT_FOUND`; people already mentioned are exempt from the active check). `taskRef` is the task UUID or its key (case-insensitive, e.g. `pro-50`). Works for every task, in a program or on a board; a task in a soft-deleted program is 404, a task on a soft-deleted board still works.
+         *
+         *     **Headers:** `Content-Type: application/json` is required for the body to be parsed.
+         *
+         *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
+         *
+         *     **Authorization / roles:** the comment's **author** only (any role). Anyone else, including ADMINs and MANAGERs, gets 403 `FORBIDDEN`.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Task UUID, or task key such as `MKT-7` (case-insensitive) */
+                    taskRef: string;
+                    /** @description Comment id (UUID) */
+                    commentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    /**
+                     * @example {
+                     *       "body": "Reproduced with a 40 MB report, @[Jane Doe](mention:baac08e5-eaef-46f0-ac9e-f8b7266c71e0) please take it"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UpdateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description The edited comment */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "data": {
+                         *         "id": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+                         *         "createdAt": "2026-10-17T10:30:00.000Z",
+                         *         "updatedAt": "2026-10-17T11:30:00.000Z",
+                         *         "isActive": true,
+                         *         "programId": null,
+                         *         "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *         "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *         "parentId": null,
+                         *         "author": {
+                         *           "id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+                         *           "name": "Ravi Kumar",
+                         *           "emailId": "ravi.kumar@saajha.org"
+                         *         },
+                         *         "body": "Reproduced with a 40 MB report, @[Jane Doe](mention:baac08e5-eaef-46f0-ac9e-f8b7266c71e0) please take it",
+                         *         "editedAt": "2026-10-17T11:30:00.000Z",
+                         *         "mentions": [
+                         *           {
+                         *             "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *             "name": "Jane Doe",
+                         *             "emailId": "jane.doe@saajha.org"
+                         *           }
+                         *         ],
+                         *         "replies": [
+                         *           {
+                         *             "id": "9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f",
+                         *             "createdAt": "2026-10-17T11:05:00.000Z",
+                         *             "updatedAt": "2026-10-17T11:05:00.000Z",
+                         *             "isActive": true,
+                         *             "programId": null,
+                         *             "boardId": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *             "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
+                         *             "parentId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+                         *             "author": {
+                         *               "id": "baac08e5-eaef-46f0-ac9e-f8b7266c71e0",
+                         *               "name": "Jane Doe",
+                         *               "emailId": "jane.doe@saajha.org"
+                         *             },
+                         *             "body": "Looks good, two small notes inline.",
+                         *             "editedAt": null,
+                         *             "mentions": []
+                         *           }
+                         *         ]
+                         *       }
+                         *     }
+                         */
+                        "application/json": components["schemas"]["CommentResponse"];
+                    };
+                };
+                /** @description Invalid params or body (unknown fields such as `parentId` are rejected), or a mention rule failed (`code`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ValidationErrorResponse"] | components["schemas"]["ErrorResponse"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description `FORBIDDEN`: the caller isn't the comment's author */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "error": "You do not have permission to perform this action",
+                         *       "code": "FORBIDDEN"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description The task isn't found (as above), or the comment is missing, deleted (including tombstones), or not on this task */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        trace?: never;
+    };
     "/reports/overview": {
         parameters: {
             query?: never;
@@ -3793,13 +5835,17 @@ export interface paths {
          *     - *On time*: completed in the period with a due date, and the completion date (UTC) on or before it. Tasks without a due date are left out of both `tasksCompletedOnTime` and `tasksCompletedWithDueDate`.
          *     - *At risk*: an in-scope program with an `endDate` before `asOf` that isn't COMPLETED or CANCELLED.
          *
-         *     **Two task scopes.** Event counts (`tasksCreated*`, `tasksCompleted*`, `trend`) count every live task in every non-deleted program, so the previous-period deltas compare like with like. Snapshot and breakdown counts (`openTasks`, `overdueTasks`, `tasksByStatus`, `openTasksByPriority`, `teams`, `programs`) count only tasks of in-scope programs. The sums of `programs[].tasksCompletedInPeriod` and `teams[].tasksCompleted` can therefore be lower than `totals.tasksCompleted`, but only when tasks were completed in a program that had already finished before the period. `trend` sums to the created/completed totals, and `openTasksByPriority`, `programs[].openTasks` and `teams[].openTasks` each sum to `totals.openTasks`.
+         *     **Scope.** `scope` picks the tasks behind every task number: `all` (default) = program tasks and board tasks, `programs` = program tasks only, `boards` = board tasks only. Board tasks always count, **even on a soft-deleted board** (boards never close; deleting one hides only the board). Program-only numbers (`totals.programs`, `programsCompleted`, `programsAtRisk`, `programsByStatus`, `teams`, `programs`) always cover programs; they are the same under `all` and `programs`, and 0 / empty under `boards`. `boards` is empty under `programs`. The response shape never changes.
+         *
+         *     **Two task scopes.** Event counts (`tasksCreated*`, `tasksCompleted*`, `trend`) count every live task in every non-deleted program, plus every live board task, so the previous-period deltas compare like with like. Snapshot and breakdown counts (`openTasks`, `overdueTasks`, `tasksByStatus`, `openTasksByPriority`, `teams`, `programs`, `boards`) count only tasks of in-scope programs, plus every live board task. The sums of `programs[].tasksCompletedInPeriod` and `teams[].tasksCompleted` can therefore be lower than `totals.tasksCompleted`, but only when tasks were completed in a program that had already finished before the period.
+         *
+         *     **What adds up.** `trend` sums to the created/completed totals. `openTasksByPriority` sums to `totals.openTasks`. `programs[].openTasks + boards[].openTasks` equals `totals.openTasks` (and the same for `overdueTasks`), except for open tasks on soft-deleted boards, which count in the totals but have no row. `teams[].openTasks` sums to `programs[].openTasks`.
          *
          *     **Statuses are current.** There's no status history, so `programsByStatus` and `tasksByStatus` use each row's status now, and the open/overdue numbers are as of now even when `to` is in the past.
          *
          *     **Trend.** Weekly (ISO weeks, Monday-Sunday) when the period is at most 92 days, otherwise monthly; in UTC. Buckets cover the period exactly: the first starts on `from` and the last ends on `to`, so either may be partial.
          *
-         *     Soft-deleted programs and tasks are excluded everywhere. An empty organisation or range returns zeros, every status and priority key, empty `teams` and `programs`, and the trend buckets.
+         *     Soft-deleted programs and tasks are excluded everywhere (soft-deleted boards aren't: only their row is). An empty organisation or range returns zeros, every status and priority key, empty `teams`, `programs` and `boards`, and the trend buckets.
          *
          *     **Authentication:** required. Send `Authorization: Bearer <accessToken>` (from `POST /auth/google`, Google sign-in).
          *
@@ -3812,6 +5858,8 @@ export interface paths {
                     from: string;
                     /** @description Last day of the period, YYYY-MM-DD (UTC), inclusive. Required. On or after `from`; may be in the future. */
                     to: string;
+                    /** @description Which tasks the task numbers cover: `all` (default, program and board tasks), `programs` (program tasks only) or `boards` (board tasks only). Program-only numbers (`totals.programs*`, `programsByStatus`, `teams`, `programs`) always cover programs, and are 0 / empty under `boards`. `boards` rows are empty under `programs`. */
+                    scope?: "all" | "programs" | "boards";
                 };
                 header?: never;
                 path?: never;
@@ -3850,8 +5898,8 @@ export interface paths {
                          *           "tasksCompletedPrevious": 30,
                          *           "tasksCompletedWithDueDate": 29,
                          *           "tasksCompletedOnTime": 22,
-                         *           "openTasks": 44,
-                         *           "overdueTasks": 7
+                         *           "openTasks": 51,
+                         *           "overdueTasks": 9
                          *         },
                          *         "programsByStatus": {
                          *           "PLANNED": 1,
@@ -3861,16 +5909,16 @@ export interface paths {
                          *           "CANCELLED": 0
                          *         },
                          *         "tasksByStatus": {
-                         *           "DISCUSSION": 9,
+                         *           "DISCUSSION": 13,
                          *           "ON_HOLD": 4,
-                         *           "IN_PROGRESS": 21,
+                         *           "IN_PROGRESS": 24,
                          *           "DONE": 37,
                          *           "DEPENDENT": 10
                          *         },
                          *         "openTasksByPriority": {
                          *           "HIGHEST": 3,
-                         *           "HIGH": 11,
-                         *           "MEDIUM": 20,
+                         *           "HIGH": 13,
+                         *           "MEDIUM": 25,
                          *           "LOW": 8,
                          *           "LOWEST": 2
                          *         },
@@ -4060,6 +6108,18 @@ export interface paths {
                          *             "overdueTasks": 0,
                          *             "atRisk": false
                          *           }
+                         *         ],
+                         *         "boards": [
+                         *           {
+                         *             "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+                         *             "key": "PRO",
+                         *             "name": "Product feedback",
+                         *             "tasksTotal": 7,
+                         *             "tasksDone": 0,
+                         *             "tasksCompletedInPeriod": 0,
+                         *             "openTasks": 7,
+                         *             "overdueTasks": 2
+                         *           }
                          *         ]
                          *       }
                          *     }
@@ -4067,7 +6127,7 @@ export interface paths {
                         "application/json": components["schemas"]["OverviewReportResponse"];
                     };
                 };
-                /** @description `Validation failed`: `from` or `to` is missing, repeated, or not a real `YYYY-MM-DD` date (`details[].path` is `from` or `to`). `INVALID_DATE_RANGE`: `from` is after `to`. `DATE_RANGE_TOO_LONG`: the range is more than 1096 days, both ends included. */
+                /** @description `Validation failed`: `from` or `to` is missing, repeated, or not a real `YYYY-MM-DD` date (`details[].path` is `from` or `to`), or `scope` isn't `all`, `programs` or `boards`. `INVALID_DATE_RANGE`: `from` is after `to`. `DATE_RANGE_TOO_LONG`: the range is more than 1096 days, both ends included. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -4102,7 +6162,7 @@ export interface components {
             /** @description Human-readable error message */
             error: string;
             /**
-             * @description Machine-readable error code, present on errors that have one: INVALID_INVITE_TOKEN, INVITE_REVOKED, INVITE_ALREADY_ACCEPTED, INVITE_PENDING, INVITE_EXPIRED, EMPLOYEE_EXISTS, EMAIL_DELIVERY_FAILED, AUTH_REQUIRED, INVALID_AUTH_TOKEN, FORBIDDEN, INVALID_GOOGLE_TOKEN, GOOGLE_EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, NOT_INVITED, ACCOUNT_INACTIVE, GOOGLE_ACCOUNT_MISMATCH, GOOGLE_UNAVAILABLE, PROGRAM_KEY_EXISTS, ASSIGNEE_NOT_FOUND, INVALID_DATE_RANGE, TASK_BLOCKED, TASK_DONE, DEPENDENCY_TASK_NOT_FOUND, DEPENDENCY_OTHER_PROGRAM, SELF_DEPENDENCY, DEPENDENCY_EXISTS, DEPENDENCY_LIMIT_REACHED, DEPENDENCY_CYCLE, PARENT_COMMENT_NOT_FOUND, PARENT_TARGET_MISMATCH, NESTED_REPLY, TOO_MANY_MENTIONS, MENTION_NOT_FOUND, TEAM_NAME_EXISTS, TEAM_OWNS_PROGRAMS, OWNER_TEAM_NOT_FOUND, SELF_LOCKOUT, LAST_ADMIN, DATE_RANGE_TOO_LONG
+             * @description Machine-readable error code, present on errors that have one: INVALID_INVITE_TOKEN, INVITE_REVOKED, INVITE_ALREADY_ACCEPTED, INVITE_PENDING, INVITE_EXPIRED, EMPLOYEE_EXISTS, EMAIL_DELIVERY_FAILED, AUTH_REQUIRED, INVALID_AUTH_TOKEN, FORBIDDEN, INVALID_GOOGLE_TOKEN, GOOGLE_EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, NOT_INVITED, ACCOUNT_INACTIVE, GOOGLE_ACCOUNT_MISMATCH, GOOGLE_UNAVAILABLE, PROGRAM_KEY_EXISTS, BOARD_KEY_EXISTS, ASSIGNEE_NOT_FOUND, INVALID_DATE_RANGE, TASK_BLOCKED, TASK_DONE, DEPENDENCY_TASK_NOT_FOUND, DEPENDENCY_OTHER_PARENT, SELF_DEPENDENCY, DEPENDENCY_EXISTS, DEPENDENCY_LIMIT_REACHED, DEPENDENCY_CYCLE, PARENT_COMMENT_NOT_FOUND, PARENT_TARGET_MISMATCH, NESTED_REPLY, TOO_MANY_MENTIONS, MENTION_NOT_FOUND, TEAM_NAME_EXISTS, TEAM_OWNS_PROGRAMS, OWNER_TEAM_NOT_FOUND, SELF_LOCKOUT, LAST_ADMIN, DATE_RANGE_TOO_LONG
              * @example INVITE_EXPIRED
              */
             code?: string;
@@ -4423,6 +6483,47 @@ export interface components {
             }[];
         };
         /**
+         * @description A lightweight container of tasks: no status, dates, owner team or board-level comments, and it never closes. Its tasks behave exactly like program tasks.
+         * @example {
+         *       "id": "8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f",
+         *       "createdAt": "2026-10-28T09:00:00.000Z",
+         *       "updatedAt": "2026-10-28T09:00:00.000Z",
+         *       "isActive": true,
+         *       "key": "PRO",
+         *       "name": "Product feedback",
+         *       "description": "Ideas and bugs reported from the field"
+         *     }
+         */
+        Board: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description false once the board is soft-deleted (deleted boards are never returned) */
+            isActive: boolean;
+            /** @description Uppercase prefix of the board's task keys. Immutable. May equal a program's key. */
+            key: string;
+            /** @description The board's topic */
+            name: string;
+            description: string | null;
+        };
+        BoardResponse: {
+            data: components["schemas"]["Board"];
+        };
+        BoardListResponse: {
+            data: components["schemas"]["Board"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        BoardLabelsResponse: {
+            data: {
+                label: string;
+                /** @description Active tasks on the board with this label */
+                taskCount: number;
+            }[];
+        };
+        /**
          * @example {
          *       "id": "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f",
          *       "key": "MKT-3",
@@ -4444,12 +6545,44 @@ export interface components {
          */
         TaskStatus: "DISCUSSION" | "ON_HOLD" | "IN_PROGRESS" | "DONE" | "DEPENDENT";
         /**
+         * @description The program or board the task belongs to
+         * @example {
+         *       "type": "PROGRAM",
+         *       "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *       "key": "MKT",
+         *       "name": "Marketing Research",
+         *       "isActive": true
+         *     }
+         */
+        TaskParent: {
+            /** @enum {string} */
+            type: "PROGRAM" | "BOARD";
+            /**
+             * Format: uuid
+             * @description Equals `programId` or `boardId`
+             */
+            id: string;
+            /** @description The program's or board's key (the prefix of the task key) */
+            key: string;
+            name: string;
+            /** @description false only when the parent is a soft-deleted **board**: the board's own routes return 404, but its tasks stay live. (A soft-deleted program's tasks aren't returned at all.) */
+            isActive: boolean;
+        };
+        /**
          * @example {
          *       "id": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
          *       "createdAt": "2026-10-17T10:00:00.000Z",
          *       "updatedAt": "2026-10-17T10:00:00.000Z",
          *       "isActive": true,
          *       "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *       "boardId": null,
+         *       "parent": {
+         *         "type": "PROGRAM",
+         *         "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *         "key": "MKT",
+         *         "name": "Marketing Research",
+         *         "isActive": true
+         *       },
          *       "key": "MKT-7",
          *       "number": 7,
          *       "title": "Draft survey questions",
@@ -4486,11 +6619,20 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             isActive: boolean;
-            /** Format: uuid */
-            programId: string;
-            /** @description Human key `<program key>-<number>`, e.g. MKT-7. Never reused. */
+            /**
+             * Format: uuid
+             * @description The task's program; null for a board task. Exactly one of programId/boardId is set.
+             */
+            programId: string | null;
+            /**
+             * Format: uuid
+             * @description The task's board; null for a program task
+             */
+            boardId: string | null;
+            parent: components["schemas"]["TaskParent"];
+            /** @description `<program or board key>-<number>`, e.g. MKT-7 or PRO-50. Unique across FlowDesk and never reused. */
             key: string;
-            /** @description Per-program sequence number */
+            /** @description Global sequence number shared by every task in FlowDesk (programs and boards): it increases with each new task, is never reused, and can have gaps, so one parent's numbers aren't consecutive. Tasks created before boards existed keep their per-program numbers. */
             number: number;
             /** @description The task heading */
             title: string;
@@ -4516,7 +6658,7 @@ export interface components {
             isDependent: boolean;
         };
         /**
-         * @description PRE: prerequisite work before the program starts. TASK: the program's main work (default). POST: work after the program ends. BUG: something broken to fix. ISSUE: a problem, risk or question to resolve. The type is informational: it doesn't affect status, dependencies or the program's status. Sort order is PRE < TASK < POST < BUG < ISSUE.
+         * @description PRE: prerequisite work before the main work starts. TASK: the main work (default). POST: follow-up work after the main work is done. BUG: something broken to fix. ISSUE: a problem, risk or question to resolve. The type is informational: it doesn't affect status, dependencies or the parent's status. Sort order is PRE < TASK < POST < BUG < ISSUE.
          * @example PRE
          * @enum {string}
          */
@@ -4534,6 +6676,14 @@ export interface components {
          *       "updatedAt": "2026-10-17T10:00:00.000Z",
          *       "isActive": true,
          *       "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *       "boardId": null,
+         *       "parent": {
+         *         "type": "PROGRAM",
+         *         "id": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *         "key": "MKT",
+         *         "name": "Marketing Research",
+         *         "isActive": true
+         *       },
          *       "key": "MKT-7",
          *       "number": 7,
          *       "title": "Draft survey questions",
@@ -4586,11 +6736,20 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             isActive: boolean;
-            /** Format: uuid */
-            programId: string;
-            /** @description Human key `<program key>-<number>`, e.g. MKT-7. Never reused. */
+            /**
+             * Format: uuid
+             * @description The task's program; null for a board task. Exactly one of programId/boardId is set.
+             */
+            programId: string | null;
+            /**
+             * Format: uuid
+             * @description The task's board; null for a program task
+             */
+            boardId: string | null;
+            parent: components["schemas"]["TaskParent"];
+            /** @description `<program or board key>-<number>`, e.g. MKT-7 or PRO-50. Unique across FlowDesk and never reused. */
             key: string;
-            /** @description Per-program sequence number */
+            /** @description Global sequence number shared by every task in FlowDesk (programs and boards): it increases with each new task, is never reused, and can have gaps, so one parent's numbers aren't consecutive. Tasks created before boards existed keep their per-program numbers. */
             number: number;
             /** @description The task heading */
             title: string;
@@ -4634,6 +6793,7 @@ export interface components {
          *       "updatedAt": "2026-10-17T11:05:00.000Z",
          *       "isActive": true,
          *       "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *       "boardId": null,
          *       "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
          *       "parentId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
          *       "author": {
@@ -4655,11 +6815,19 @@ export interface components {
             updatedAt: string;
             /** @description false only on a tombstone (a deleted top-level comment that still has active replies) */
             isActive: boolean;
-            /** Format: uuid */
-            programId: string;
             /**
              * Format: uuid
-             * @description The task the comment is on; null for a program-level comment
+             * @description The program the comment (or its task) belongs to; null for a comment on a board task. Exactly one of programId/boardId is set.
+             */
+            programId: string | null;
+            /**
+             * Format: uuid
+             * @description The board of the task the comment is on; null unless it's on a board task
+             */
+            boardId: string | null;
+            /**
+             * Format: uuid
+             * @description The task the comment is on; null for a program-level comment (boards have no board-level comments)
              */
             taskId: string | null;
             /**
@@ -4679,13 +6847,14 @@ export interface components {
             mentions: components["schemas"]["EmployeeSummary"][];
         };
         /**
-         * @description A comment on a program (`taskId: null`) or on a task. `replies` appears only on top-level comments. A deleted top-level comment that still has active replies is returned as a **tombstone**: `isActive: false`, `body: null`, `author: null`, `editedAt: null` and `mentions: []`, with `id`, `createdAt`, `parentId` and `replies` still filled in. `mentions` shows each person's current name.
+         * @description A comment on a program (`taskId: null`), on a program task, or on a board task (`boardId` set). `replies` appears only on top-level comments. A deleted top-level comment that still has active replies is returned as a **tombstone**: `isActive: false`, `body: null`, `author: null`, `editedAt: null` and `mentions: []`, with `id`, `createdAt`, `parentId` and `replies` still filled in. `mentions` shows each person's current name.
          * @example {
          *       "id": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
          *       "createdAt": "2026-10-17T10:30:00.000Z",
          *       "updatedAt": "2026-10-17T10:30:00.000Z",
          *       "isActive": true,
          *       "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *       "boardId": null,
          *       "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
          *       "parentId": null,
          *       "author": {
@@ -4709,6 +6878,7 @@ export interface components {
          *           "updatedAt": "2026-10-17T11:05:00.000Z",
          *           "isActive": true,
          *           "programId": "5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14",
+         *           "boardId": null,
          *           "taskId": "7d2e9b40-1c3a-4e5f-8a6b-9c0d1e2f3a4b",
          *           "parentId": "2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
          *           "author": {
@@ -4732,11 +6902,19 @@ export interface components {
             updatedAt: string;
             /** @description false only on a tombstone (a deleted top-level comment that still has active replies) */
             isActive: boolean;
-            /** Format: uuid */
-            programId: string;
             /**
              * Format: uuid
-             * @description The task the comment is on; null for a program-level comment
+             * @description The program the comment (or its task) belongs to; null for a comment on a board task. Exactly one of programId/boardId is set.
+             */
+            programId: string | null;
+            /**
+             * Format: uuid
+             * @description The board of the task the comment is on; null unless it's on a board task
+             */
+            boardId: string | null;
+            /**
+             * Format: uuid
+             * @description The task the comment is on; null for a program-level comment (boards have no board-level comments)
              */
             taskId: string | null;
             /**
@@ -4798,18 +6976,19 @@ export interface components {
             /** @description Same as `period.days` */
             days: number;
         };
+        /** @description Task numbers cover the tasks selected by `scope` (`all` = program and board tasks). Program numbers cover programs only. */
         OverviewTotals: {
-            /** @description In-scope programs: active, created before the period ended, and not completed/cancelled before it started */
+            /** @description In-scope programs: active, created before the period ended, and not completed/cancelled before it started. 0 under `scope=boards`. */
             programs: number;
-            /** @description In-scope programs that are COMPLETED now with `completedAt` in the period (a program reopened since doesn't count) */
+            /** @description In-scope programs that are COMPLETED now with `completedAt` in the period (a program reopened since doesn't count). 0 under `scope=boards`. */
             programsCompleted: number;
-            /** @description In-scope programs with an `endDate` before `asOf` that aren't COMPLETED or CANCELLED. Programs without an endDate are never at risk. */
+            /** @description In-scope programs with an `endDate` before `asOf` that aren't COMPLETED or CANCELLED. Programs without an endDate are never at risk. 0 under `scope=boards`. */
             programsAtRisk: number;
-            /** @description Tasks created in the period, across every active program (event count) */
+            /** @description Tasks in scope created in the period: tasks of every active program and/or every board task (event count) */
             tasksCreated: number;
-            /** @description Tasks created in the previous period, across every active program */
+            /** @description The same for the previous period */
             tasksCreatedPrevious: number;
-            /** @description Tasks DONE now whose `completedAt` (last move to DONE) is in the period, across every active program (event count) */
+            /** @description Tasks in scope DONE now whose `completedAt` (last move to DONE) is in the period (event count) */
             tasksCompleted: number;
             /** @description The same for the previous period */
             tasksCompletedPrevious: number;
@@ -4817,12 +6996,12 @@ export interface components {
             tasksCompletedWithDueDate: number;
             /** @description Of `tasksCompletedWithDueDate`, those whose completion date (UTC) is on or before the due date */
             tasksCompletedOnTime: number;
-            /** @description Tasks of in-scope programs that aren't DONE, as of now (snapshot) */
+            /** @description Snapshot tasks that aren't DONE, as of now: tasks of in-scope programs and/or every board task (including on deleted boards) */
             openTasks: number;
             /** @description Of `openTasks`, those with a due date before `asOf` */
             overdueTasks: number;
         };
-        /** @description In-scope programs by **current** status (there's no status history). Sums to `totals.programs`. */
+        /** @description In-scope programs by **current** status (there's no status history). Sums to `totals.programs`. Every key is 0 under `scope=boards`. */
         ProgramsByStatus: {
             /** @description In-scope programs PLANNED now */
             PLANNED: number;
@@ -4835,7 +7014,7 @@ export interface components {
             /** @description In-scope programs CANCELLED now */
             CANCELLED: number;
         };
-        /** @description Tasks of in-scope programs that were live in the period (created before it ended, and open or completed on/after `from`), by **current** status. */
+        /** @description Snapshot tasks in scope (tasks of in-scope programs and/or board tasks) that were live in the period (created before it ended, and open or completed on/after `from`), by **current** status. */
         TasksByStatus: {
             /** @description In-scope tasks in DISCUSSION now */
             DISCUSSION: number;
@@ -4878,7 +7057,7 @@ export interface components {
             /** @description Tasks completed in the bucket (same scope as `totals.tasksCompleted`) */
             completed: number;
         };
-        /** @description Rolled up by program owner team. Teams owning no in-scope program are left out. */
+        /** @description Rolled up by program owner team; board tasks are never included. Teams owning no in-scope program are left out. Empty under `scope=boards`. */
         TeamReportRow: {
             /**
              * Format: uuid
@@ -4930,6 +7109,23 @@ export interface components {
             /** @description `endDate` before `asOf` and status not COMPLETED/CANCELLED */
             atRisk: boolean;
         };
+        /** @description One active board with at least one live task. Boards never close, so every such board is listed whatever the period. A soft-deleted board has no row, though its tasks still count in the totals. */
+        BoardReportRow: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            name: string;
+            /** @description All live tasks on the board */
+            tasksTotal: number;
+            /** @description Tasks DONE now */
+            tasksDone: number;
+            /** @description Tasks completed in the period */
+            tasksCompletedInPeriod: number;
+            /** @description Tasks not DONE, as of now */
+            openTasks: number;
+            /** @description Open tasks with a due date before `asOf` */
+            overdueTasks: number;
+        };
         OverviewReport: {
             period: components["schemas"]["ReportPeriod"];
             previousPeriod: components["schemas"]["ReportPreviousPeriod"];
@@ -4945,8 +7141,10 @@ export interface components {
             trend: components["schemas"]["TrendBucket"][];
             /** @description Ordered by name (ignoring case), then teamId; the no-team row (teamId null) last */
             teams: components["schemas"]["TeamReportRow"][];
-            /** @description Every in-scope program, unpaginated. Ordered: atRisk first, then overdueTasks descending, then name (ignoring case), then id. */
+            /** @description Every in-scope program, unpaginated. Ordered: atRisk first, then overdueTasks descending, then name (ignoring case), then id. Empty under `scope=boards`. */
             programs: components["schemas"]["ProgramReportRow"][];
+            /** @description Every active board with at least one live task, unpaginated. Ordered: overdueTasks descending, then name (ignoring case), then id. Empty under `scope=programs`. */
+            boards: components["schemas"]["BoardReportRow"][];
         };
         OverviewReportResponse: {
             data: components["schemas"]["OverviewReport"];
@@ -5050,7 +7248,7 @@ export interface components {
              */
             ownerTeamId: string;
             /**
-             * @description Short prefix of the program's task keys (MKT -> MKT-42). Trimmed and uppercased, then 2-10 letters or digits starting with a letter. Unique, including soft-deleted programs, and cannot be changed later.
+             * @description Short prefix of the program's task keys (MKT -> MKT-42). Trimmed and uppercased, then 2-10 letters or digits starting with a letter. Unique among programs, including soft-deleted ones, and cannot be changed later. A board may use the same key.
              * @example MKT
              */
             key: string;
@@ -5115,6 +7313,36 @@ export interface components {
              * @example 3f2c8b1e-6d4a-4b7e-9c21-5a8e7d0f1b23
              */
             ownerTeamId?: string;
+        };
+        CreateBoardRequest: {
+            /**
+             * @description Short prefix of the board's task keys (PRO -> PRO-50). Trimmed and uppercased, then 2-10 letters or digits starting with a letter. Unique among boards, including soft-deleted ones, and cannot be changed later. May equal a program's key.
+             * @example PRO
+             */
+            key: string;
+            /**
+             * @description The board's topic. Trimmed; 1-150 characters
+             * @example Product feedback
+             */
+            name: string;
+            /**
+             * @description Free text, at most 10,000 characters; null clears it
+             * @example Ideas and bugs reported from the field
+             */
+            description?: string | null;
+        };
+        /** @description Send at least one field. `key` is immutable and is rejected; unknown fields are rejected too. */
+        UpdateBoardRequest: {
+            /**
+             * @description The board's topic. Trimmed; 1-150 characters
+             * @example Product feedback
+             */
+            name?: string;
+            /**
+             * @description Free text, at most 10,000 characters; null clears it
+             * @example Ideas and bugs reported from the field
+             */
+            description?: string | null;
         };
         /** @description The reporter is the signed-in employee; a `reporterId` in the body is ignored. */
         CreateTaskRequest: {
@@ -5182,7 +7410,7 @@ export interface components {
              */
             labels: string[];
             /**
-             * @description Ids of tasks in the same program that block this one; unique, at most 50
+             * @description Ids of tasks with the same parent (program or board) that block this one; unique, at most 50
              * @default []
              * @example [
              *       "0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f"
@@ -5190,7 +7418,7 @@ export interface components {
              */
             dependsOn: string[];
         };
-        /** @description Send at least one field. Nullable fields accept null to clear them. Unknown fields (including `dependsOn`) are rejected. */
+        /** @description Send at least one field. Nullable fields accept null to clear them. Unknown fields are rejected, including `dependsOn` and `programId`/`boardId` (a task's parent is fixed at creation). */
         UpdateTaskRequest: {
             /**
              * @description The task heading. Trimmed; 1-255 characters
@@ -5245,7 +7473,7 @@ export interface components {
         AddDependencyRequest: {
             /**
              * Format: uuid
-             * @description Id of the blocking task (same program)
+             * @description Id of the blocking task (same program or board)
              * @example 0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f
              */
             dependsOnTaskId: string;

@@ -12,9 +12,11 @@ const PRIORITIES = [...TASK_PRIORITIES].reverse()
 interface PriorityBarsProps {
   counts: OverviewReport['openTasksByPriority']
   openTasks: number
+  // Where the open tasks are, e.g. "in the programs that ran in the period".
+  where: string
 }
 
-export function PriorityBars({ counts, openTasks }: PriorityBarsProps) {
+export function PriorityBars({ counts, openTasks, where }: PriorityBarsProps) {
   const most = Math.max(0, ...PRIORITIES.map((priority) => counts[priority]))
 
   return (
@@ -23,7 +25,9 @@ export function PriorityBars({ counts, openTasks }: PriorityBarsProps) {
         <CardTitle>
           <h2>Open tasks by priority</h2>
         </CardTitle>
-        <CardDescription>{plural(openTasks, 'open task')} right now, in the programs that ran in the period.</CardDescription>
+        <CardDescription>
+          {plural(openTasks, 'open task')} right now, {where}.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ul aria-label="Open tasks by priority" className="flex flex-col gap-3">

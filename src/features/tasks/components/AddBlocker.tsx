@@ -10,6 +10,7 @@ import { CommandItem, CommandList } from '@/components/ui/command'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useAddBlocker, useTaskSearch } from '../api'
 import { toastTaskUpdateError } from '../taskErrors'
+import { parentNoun } from '../taskParent'
 import type { TaskDetail, TaskSummary } from '../types'
 import { TaskStatusBadge } from './TaskStatusBadge'
 
@@ -24,14 +25,14 @@ interface AddBlockerProps {
   onClose: () => void
 }
 
-// Jira's "is blocked by" link: search the program's tasks by title or key, and picking one links it right
-// away. Any active employee may (contract).
+// Jira's "is blocked by" link: search the tasks of the same program or board (the only blockers the server
+// accepts) by title or key, and picking one links it right away. Any active employee may (contract).
 export function AddBlocker({ task, taskRef, onClose }: AddBlockerProps) {
   const [text, setText] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const q = useDebouncedValue(text.trim(), SEARCH_DEBOUNCE_MS)
-  const search = useTaskSearch(task.programId, q)
-  const addBlocker = useAddBlocker(task.programId, taskRef)
+  const search = useTaskSearch(task.parent, q)
+  const addBlocker = useAddBlocker(task, taskRef)
   const pending = addBlocker.isPending
 
   // The task itself and its current blockers would only fail (SELF_DEPENDENCY, DEPENDENCY_EXISTS). Cycles,
@@ -64,7 +65,7 @@ export function AddBlocker({ task, taskRef, onClose }: AddBlockerProps) {
   if (pending) status = `Adding ${addBlocker.variables.key}…`
   else if (search.isError) status = "Couldn't search tasks. Try again."
   else if (search.isPending) status = 'Searching…'
-  else if (suggestions.length === 0) status = q ? `No tasks match “${q}”.` : 'No other tasks in this program yet.'
+  else if (suggestions.length === 0) status = q ? `No tasks match “${q}”.` : `No other tasks in this ${parentNoun(task.parent)} yet.`
 
   return (
     <div className="flex flex-col gap-2">

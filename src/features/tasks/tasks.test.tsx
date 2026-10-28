@@ -2,11 +2,11 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Employee } from '@/features/employees'
 import { api, currentUrl, janeDoe, renderSignedIn } from '@/test/renderApp'
 import { server } from '@/test/server'
-import { ProgramTasks } from './components/ProgramTasks'
+import { TaskListSection } from './components/TaskListSection'
 import type { Task } from './types'
 
 const PROGRAM_ID = '5b1f6a3e-8c1d-4f8e-9a51-2a7c3d9e0b14'
@@ -28,6 +28,8 @@ const draft: Task = {
   updatedAt: '2026-10-17T10:00:00.000Z',
   isActive: true,
   programId: PROGRAM_ID,
+  boardId: null,
+  parent: { type: 'PROGRAM', id: PROGRAM_ID, key: 'MKT', name: 'Marketing Research', isActive: true },
   key: 'MKT-13',
   number: 13,
   title: 'Draft survey questions',
@@ -100,7 +102,10 @@ function renderTasks(path = '/p') {
   return renderSignedIn(path, {
     routes: (
       <Routes>
-        <Route path="/p" element={<ProgramTasks programId={PROGRAM_ID} programName="Marketing Research" />} />
+        <Route
+          path="/p"
+          element={<TaskListSection parent={{ type: 'PROGRAM', id: PROGRAM_ID }} parentName="Marketing Research" headingHidden />}
+        />
       </Routes>
     ),
   })
@@ -113,7 +118,12 @@ async function openCreateDialog() {
 
 const row = (title: string) => screen.getByText(title).closest('tr')!
 
-describe('ProgramTasks list', () => {
+// The Created tests fake today's date.
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+describe('TaskListSection (program)', () => {
   it('lists tasks with key, labels, type, status, priority and assignee, without a due date', async () => {
     const queries = mockTasks(() => [draft, venue])
     renderTasks()
@@ -147,7 +157,7 @@ describe('ProgramTasks list', () => {
 
   it('offers to clear filters that match nothing', async () => {
     mockTasks(() => [])
-    renderTasks('/p?q=zzz&status=DONE')
+    renderTasks('/p?q=zzz&status=DONE&created=30d')
 
     expect(await screen.findByText('No tasks match these filters')).toBeInTheDocument()
     expect(screen.getByLabelText('Search tasks')).toHaveValue('zzz')
@@ -206,6 +216,42 @@ describe('ProgramTasks list', () => {
     expect(await screen.findByText('Book the venue')).toBeInTheDocument()
     expect(queries).toEqual(['limit=20&offset=0', 'limit=20&offset=20'])
     expect(currentUrl()).toBe('/p?offset=20')
+  })
+
+  it('filters by creation date from the first page, and keeps it when paging', async () => {
+    // Today is 28 Oct 2026 in the browser's zone. Only Date is faked; timers stay real for MSW and user-event.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 28, 12))
+    const queries = mockTasks((url) => HttpResponse.json({ data: [draft], meta: { total: 21, limit: 20, offset: Number(url.searchParams.get('offset')) } }))
+    renderTasks('/p?offset=20')
+    await screen.findByText('Draft survey questions')
+    expect(screen.getByRole('combobox', { name: 'Created' })).toHaveTextContent('All time')
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Created' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Last 7 days' }))
+    await waitFor(() => expect(queries.at(-1)).toBe('createdFrom=2026-10-22&limit=20&offset=0'))
+    expect(currentUrl()).toBe('/p?created=7d')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => expect(queries.at(-1)).toBe('createdFrom=2026-10-22&limit=20&offset=20'))
+    expect(currentUrl()).toBe('/p?created=7d&offset=20')
+  })
+
+  it('sends Last 30 days from the URL and ignores an unknown value', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 28, 12))
+    const queries = mockTasks(() => [draft])
+    renderTasks('/p?created=30d')
+    await screen.findByText('Draft survey questions')
+    expect(queries).toEqual(['createdFrom=2026-09-29&limit=20&offset=0'])
+    expect(screen.getByRole('combobox', { name: 'Created' })).toHaveTextContent('Last 30 days')
+  })
+
+  it('ignores ?created=bogus', async () => {
+    const queries = mockTasks(() => [draft])
+    renderTasks('/p?created=bogus')
+    await screen.findByText('Draft survey questions')
+    expect(queries).toEqual(['limit=20&offset=0'])
   })
 
   it('shows an error with retry on a 500', async () => {

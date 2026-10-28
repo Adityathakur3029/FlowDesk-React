@@ -26,9 +26,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useTeamDirectory } from '@/features/teams'
 import { applyServerErrors } from '@/lib/formErrors'
 import { paths } from '@/routes/paths'
+import { keyHint, suggestKey } from '@/lib/keys'
 import { useCreateProgram } from '../api'
-import { suggestProgramKey } from '../programKey'
-import { programFields, PROGRAM_KEY_PATTERN, programSchema, type ProgramFormValues } from '../programSchema'
+import { programFields, programSchema, type ProgramFormValues } from '../programSchema'
 import { PROGRAM_STATUSES, PROGRAM_STATUS_LABELS, PROGRAM_STATUS_TONES } from '../programStatus'
 import type { CreateProgramRequest, Program } from '../types'
 
@@ -116,10 +116,8 @@ export function CreateProgramDialog({ onCreated }: CreateProgramDialogProps) {
     }
     createProgram.mutate(body, {
       onSuccess: (program) => {
-        // The server's trimmed, uppercased values.
-        toast.success(`Program “${program.name}” created`, {
-          description: `Its tasks will be numbered ${program.key}-1, ${program.key}-2…`,
-        })
+        // The server's trimmed, uppercased values. Task numbers are global, so only the prefix is promised.
+        toast.success(`Program “${program.name}” created`, { description: `Its task keys will start with ${program.key}-.` })
         close()
         onCreated?.(program)
       },
@@ -176,7 +174,7 @@ export function CreateProgramDialog({ onCreated }: CreateProgramDialogProps) {
                       {...field}
                       onChange={(event) => {
                         field.onChange(event)
-                        const suggestion = suggestProgramKey(event.target.value)
+                        const suggestion = suggestKey(event.target.value)
                         const current = form.getValues('key')
                         if (current === '' || current === lastSuggestion.current) {
                           form.setValue('key', suggestion, { shouldValidate: form.formState.isSubmitted })
@@ -220,12 +218,7 @@ export function CreateProgramDialog({ onCreated }: CreateProgramDialogProps) {
                       aria-describedby="program-key-hint program-key-error"
                       disabled={pending}
                     />
-                    {/* key is immutable (PATCH rejects it) and stays taken after a delete, so a typo is permanent. */}
-                    <FieldDescription id="program-key-hint">
-                      {PROGRAM_KEY_PATTERN.test(key.trim())
-                        ? `Tasks will be numbered ${key.trim()}-1, ${key.trim()}-2… The key can't be changed later.`
-                        : "2–10 letters or digits, starting with a letter. It can't be changed later."}
-                    </FieldDescription>
+                    <FieldDescription id="program-key-hint">{keyHint(key)}</FieldDescription>
                     <FieldError id="program-key-error" errors={[fieldState.error]} />
                   </Field>
                 )}

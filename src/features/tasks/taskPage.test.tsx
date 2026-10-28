@@ -2,6 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import type { Board } from '@/features/boards/types'
+import type { Comment } from '@/features/comments/types'
 import type { Program } from '@/features/programs/types'
 import { calendarDateFormat } from '@/lib/dates'
 import { api, currentUrl, janeDoe, renderSignedIn } from '@/test/renderApp'
@@ -33,6 +35,8 @@ const draft: TaskDetail = {
   updatedAt: '2026-10-18T10:00:00.000Z',
   isActive: true,
   programId: marketing.id,
+  boardId: null,
+  parent: { type: 'PROGRAM', id: marketing.id, key: 'MKT', name: 'Marketing Research', isActive: true },
   key: 'MKT-7',
   number: 7,
   title: 'Draft survey questions',
@@ -51,22 +55,22 @@ const draft: TaskDetail = {
   dependsOn: [{ id: '0e6c1f2a-4b8d-4c3e-9f7a-1d2b3c4d5e6f', key: 'MKT-3', title: 'Finalise sample', status: 'DONE' }],
   blocks: [{ id: '3f4a5b6c-7d8e-4f90-a1b2-c3d4e5f6a7b8', key: 'MKT-9', title: 'Run survey', status: 'DEPENDENT' }],
 }
-const TASK_URL = `/programs/${marketing.id}/tasks/MKT-7`
+const TASK_URL = '/tasks/MKT-7'
 const PROGRAM_URL = `/programs/${marketing.id}`
 
 const emptyPage = { data: [], meta: { total: 0, limit: 20, offset: 0 } }
 
-// GET the task (by whatever ref the URL has), its program and its comments.
+// GET the task (by whatever ref the URL has) and its comments, and the program page for tests that land there.
 function mockTask(respond: () => Response | TaskDetail = () => draft) {
   const calls = { refs: [] as string[], comments: [] as string[] }
   server.use(
-    http.get(api('/programs/:programId/tasks/:taskRef'), ({ params }) => {
+    http.get(api('/tasks/:taskRef'), ({ params }) => {
       calls.refs.push(String(params.taskRef))
       const result = respond()
       return result instanceof Response ? result : HttpResponse.json({ data: result })
     }),
     http.get(api('/programs/:programId'), () => HttpResponse.json({ data: marketing })),
-    http.get(api('/programs/:programId/tasks/:taskRef/comments'), ({ request, params }) => {
+    http.get(api('/tasks/:taskRef/comments'), ({ request, params }) => {
       calls.comments.push(`${String(params.taskRef)}?${new URL(request.url).search.slice(1)}`)
       return HttpResponse.json(emptyPage)
     }),
@@ -74,12 +78,12 @@ function mockTask(respond: () => Response | TaskDetail = () => draft) {
   return calls
 }
 
-// PATCH …/tasks/{taskRef}: answers with the task merged with the body, or a given error.
+// PATCH /tasks/{taskRef}: answers with the task merged with the body, or a given error.
 function mockPatch(respond?: (body: UpdateTaskRequest) => Response | TaskDetail) {
   const bodies: UpdateTaskRequest[] = []
   const people: Record<string, EmployeeSummary> = { [jane.id]: jane, [ravi.id]: ravi }
   server.use(
-    http.patch(api('/programs/:programId/tasks/:taskRef'), async ({ request }) => {
+    http.patch(api('/tasks/:taskRef'), async ({ request }) => {
       const body = (await request.json()) as UpdateTaskRequest
       bodies.push(body)
       const { assigneeId, ...rest } = body
@@ -130,7 +134,7 @@ describe('TaskPage', () => {
     const blockedBy = screen.getByRole('list', { name: 'Blocked by' })
     expect(within(blockedBy).getByRole('link', { name: 'MKT-3 Finalise sample' })).toHaveAttribute(
       'href',
-      `/programs/${marketing.id}/tasks/MKT-3`,
+      '/tasks/MKT-3',
     )
     expect(within(blockedBy).getByText('Done')).toBeInTheDocument()
     expect(within(screen.getByRole('list', { name: 'Blocks' })).getByText('Dependent')).toBeInTheDocument()
@@ -369,7 +373,7 @@ describe('TaskPage delete', () => {
   function mockDelete(respond: () => Response = () => new HttpResponse(null, { status: 204 })) {
     const calls = { refs: [] as string[] }
     server.use(
-      http.delete(api('/programs/:programId/tasks/:taskRef'), ({ params }) => {
+      http.delete(api('/tasks/:taskRef'), ({ params }) => {
         calls.refs.push(String(params.taskRef))
         return respond()
       }),
@@ -426,8 +430,8 @@ describe('TaskPage comments', () => {
     const bodies: unknown[] = []
     const paths: string[] = []
     server.use(
-      http.post(api('/programs/:programId/tasks/:taskRef/comments'), async ({ request, params }) => {
-        paths.push(`${String(params.programId)}/${String(params.taskRef)}`)
+      http.post(api('/tasks/:taskRef/comments'), async ({ request, params }) => {
+        paths.push(String(params.taskRef))
         bodies.push(await request.json())
         return HttpResponse.json(
           {
@@ -437,6 +441,7 @@ describe('TaskPage comments', () => {
               updatedAt: '2026-10-20T10:30:00.000Z',
               isActive: true,
               programId: marketing.id,
+              boardId: null,
               taskId: draft.id,
               parentId: null,
               author: jane,
@@ -458,7 +463,7 @@ describe('TaskPage comments', () => {
 
     expect(await screen.findByText('Comment added')).toBeInTheDocument()
     expect(bodies).toEqual([{ body: 'Looks good' }])
-    expect(paths).toEqual([`${marketing.id}/${draft.id}`])
+    expect(paths).toEqual([draft.id])
   })
 })
 
@@ -496,7 +501,7 @@ describe('TaskPage blockers', () => {
   function mockAdd(respond: () => Response) {
     const bodies: unknown[] = []
     server.use(
-      http.post(api('/programs/:programId/tasks/:taskRef/dependencies'), async ({ request }) => {
+      http.post(api('/tasks/:taskRef/dependencies'), async ({ request }) => {
         bodies.push(await request.json())
         return respond()
       }),
@@ -568,7 +573,7 @@ describe('TaskPage blockers', () => {
     mockTask(() => ({ ...draft, status: 'DEPENDENT', dependsOn: [open] }))
     const removed: string[] = []
     server.use(
-      http.delete(api('/programs/:programId/tasks/:taskRef/dependencies/:dependsOnTaskId'), ({ params }) => {
+      http.delete(api('/tasks/:taskRef/dependencies/:dependsOnTaskId'), ({ params }) => {
         removed.push(`${String(params.taskRef)}/${String(params.dependsOnTaskId)}`)
         return HttpResponse.json({ data: { ...draft, status: 'IN_PROGRESS', dependsOn: [] } })
       }),
@@ -605,7 +610,7 @@ describe('TaskPage blockers', () => {
   it('toasts the error when removing fails', async () => {
     mockTask()
     server.use(
-      http.delete(api('/programs/:programId/tasks/:taskRef/dependencies/:dependsOnTaskId'), () =>
+      http.delete(api('/tasks/:taskRef/dependencies/:dependsOnTaskId'), () =>
         HttpResponse.json({ error: 'MKT-7 does not depend on MKT-3' }, { status: 404 }),
       ),
     )
@@ -613,5 +618,146 @@ describe('TaskPage blockers', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove blocker MKT-3' }))
     expect(await screen.findByText('MKT-7 does not depend on MKT-3')).toBeInTheDocument()
+  })
+})
+
+describe('TaskPage parents (spec 15)', () => {
+  const BOARD_ID = '8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f'
+  const BOARD_URL = `/boards/${BOARD_ID}`
+  const feedback: Board = {
+    id: BOARD_ID,
+    createdAt: '2026-10-28T09:00:00.000Z',
+    updatedAt: '2026-10-28T09:00:00.000Z',
+    isActive: true,
+    key: 'PRO',
+    name: 'Product feedback',
+    description: null,
+  }
+  // A board task: same shape as a program task, with boardId and a BOARD parent.
+  const boardTask: TaskDetail = {
+    ...draft,
+    id: '4e5f6a7b-8c9d-4e0f-a1b2-c3d4e5f6a7b8',
+    programId: null,
+    boardId: BOARD_ID,
+    parent: { type: 'BOARD', id: BOARD_ID, key: 'PRO', name: 'Product feedback', isActive: true },
+    key: 'PRO-50',
+    number: 50,
+    dependsOn: [],
+    blocks: [],
+  }
+
+  async function openBoardTask(task: TaskDetail = boardTask, options: Parameters<typeof renderSignedIn>[1] = {}) {
+    const calls = mockTask(() => task)
+    renderSignedIn('/tasks/PRO-50', options)
+    await screen.findByRole('heading', { level: 1, name: 'Draft survey questions' })
+    return calls
+  }
+
+  it('opens a board task by its key, with the board as its parent', async () => {
+    const calls = await openBoardTask()
+
+    expect(calls.refs).toEqual(['PRO-50'])
+    expect(screen.getByRole('link', { name: 'Product feedback' })).toHaveAttribute('href', BOARD_URL)
+    expect(within(detail('Board')).getByRole('link', { name: 'PRO Product feedback' })).toHaveAttribute('href', BOARD_URL)
+    expect(details().queryByText('Program', { selector: 'dt' })).not.toBeInTheDocument()
+  })
+
+  it('names the program in Details for a program task', async () => {
+    mockTask()
+    await openTask()
+    expect(within(detail('Program')).getByRole('link', { name: 'MKT Marketing Research' })).toHaveAttribute('href', PROGRAM_URL)
+  })
+
+  it('goes back to Boards when the task is on a deleted board', async () => {
+    await openBoardTask({ ...boardTask, parent: { ...boardTask.parent, isActive: false } })
+
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
+    expect(detail('Board')).toHaveTextContent('PRO Product feedback (deleted)')
+    expect(within(detail('Board')).queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('redirects old program task links to /tasks/{taskRef}, whatever the program id', async () => {
+    const calls = mockTask()
+    renderSignedIn(`/programs/${marketing.id}/tasks/MKT-7`)
+    await screen.findByRole('heading', { level: 1, name: 'Draft survey questions' })
+    expect(currentUrl()).toBe(TASK_URL)
+    expect(calls.refs).toEqual(['MKT-7'])
+  })
+
+  it('searches the same board for blockers', async () => {
+    const queries: string[] = []
+    server.use(
+      http.get(api('/boards/:boardId/tasks'), ({ request, params }) => {
+        queries.push(`${String(params.boardId)}?${new URL(request.url).search.slice(1)}`)
+        return HttpResponse.json(emptyPage)
+      }),
+    )
+    await openBoardTask()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add blocker' }))
+    expect(await screen.findByText('No other tasks in this board yet.')).toBeInTheDocument()
+    expect(queries).toEqual([`${BOARD_ID}?limit=20&offset=0`])
+  })
+
+  it('edits a comment on a board task through /tasks/{taskId}/comments', async () => {
+    const original: Comment = {
+      id: '2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d',
+      createdAt: '2026-10-28T10:30:00.000Z',
+      updatedAt: '2026-10-28T10:30:00.000Z',
+      isActive: true,
+      programId: null,
+      boardId: BOARD_ID,
+      taskId: boardTask.id,
+      parentId: null,
+      author: jane,
+      body: 'Original',
+      editedAt: null,
+      mentions: [],
+      replies: [],
+    }
+    const patched: string[] = []
+    let body = original.body
+    mockTask(() => boardTask)
+    server.use(
+      http.get(api('/tasks/:taskRef/comments'), () =>
+        HttpResponse.json({ data: [{ ...original, body }], meta: { total: 1, limit: 20, offset: 0 } }),
+      ),
+      http.patch(api('/tasks/:taskRef/comments/:commentId'), async ({ request, params }) => {
+        patched.push(`${String(params.taskRef)}/${String(params.commentId)}`)
+        body = ((await request.json()) as { body: string }).body
+        return HttpResponse.json({ data: { ...original, body, editedAt: '2026-10-28T11:00:00.000Z' } })
+      }),
+    )
+    renderSignedIn('/tasks/PRO-50')
+
+    await userEvent.click(within(await screen.findByRole('article', { name: 'Comment by Jane Doe' })).getByRole('button', { name: 'Edit' }))
+    const form = screen.getByRole('form', { name: 'Edit comment' })
+    await userEvent.type(within(form).getByRole('textbox', { name: 'Comment' }), ' text')
+    await userEvent.click(within(form).getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Comment updated')).toBeInTheDocument()
+    expect(patched).toEqual([`${boardTask.id}/${original.id}`])
+  })
+
+  it('deletes a board task and goes back to the board', async () => {
+    const deleted: string[] = []
+    server.use(
+      http.delete(api('/tasks/:taskRef'), ({ params }) => {
+        deleted.push(String(params.taskRef))
+        return new HttpResponse(null, { status: 204 })
+      }),
+      // The board page the user lands on.
+      http.get(api('/boards/:boardId'), () => HttpResponse.json({ data: feedback })),
+      http.get(api('/boards/:boardId/tasks'), () => HttpResponse.json(emptyPage)),
+    )
+    await openBoardTask(boardTask, { role: 'MANAGER' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete task PRO-50' }))
+    await userEvent.click(within(screen.getByRole('alertdialog', { name: 'Delete PRO-50?' })).getByRole('button', { name: 'Delete task' }))
+
+    expect(await screen.findByText('PRO-50 deleted')).toBeInTheDocument()
+    await waitFor(() => expect(currentUrl()).toBe(BOARD_URL))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Product feedback' })).toBeInTheDocument()
+    expect(deleted).toEqual(['PRO-50'])
   })
 })

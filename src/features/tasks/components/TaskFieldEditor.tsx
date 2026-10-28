@@ -128,7 +128,7 @@ export function TaskFieldEditor({ task, taskRef, field, onClose, className }: Ta
   const config = FIELDS[field]
   const id = useId()
   const [formErrors, setFormErrors] = useState<string[]>([])
-  const update = useUpdateTask(task.programId, taskRef)
+  const update = useUpdateTask(taskRef)
   const form = useForm<FormValues>({
     resolver: zodResolver(z.object({ value: config.schema })),
     defaultValues: { value: config.read(task) },

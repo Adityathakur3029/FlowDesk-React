@@ -5,9 +5,11 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { localToday } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { useOverview } from '../api'
+import { BoardReportTable } from '../components/BoardReportTable'
 import { PeriodFilter } from '../components/PeriodFilter'
 import { PriorityBars } from '../components/PriorityBars'
 import { ProgramReportTable } from '../components/ProgramReportTable'
@@ -16,8 +18,10 @@ import { StatusBreakdown } from '../components/StatusBreakdown'
 import { TeamReport } from '../components/TeamReport'
 import { TrendChart } from '../components/TrendChart'
 import { formatRange, plural } from '../format'
-import { END_BEFORE_START, localToday, parsePeriod, resolvePeriod, toPeriodSearchParams } from '../period'
+import { END_BEFORE_START, parsePeriod, resolvePeriod, toPeriodSearchParams } from '../period'
+import { DEFAULT_SCOPE, parseScope, SCOPE_TASKS_WHERE, withScope } from '../scope'
 import { programStatusItems, taskStatusItems } from '../statusBreakdowns'
+import type { ReportScope } from '../types'
 
 // A 400 is about the dates (only a custom range can produce one): its message goes under the range inputs.
 function rangeErrorMessage(error: unknown): string | null {
@@ -26,11 +30,20 @@ function rangeErrorMessage(error: unknown): string | null {
   return error.fieldErrors.from ?? error.fieldErrors.to ?? getErrorMessage(error)
 }
 
+// Where the open tasks behind "Open tasks by priority" are, per scope (snapshot counts, see the contract).
+const OPEN_TASKS_WHERE: Record<ReportScope, string> = {
+  all: 'in the programs that ran in the period and on boards',
+  programs: 'in the programs that ran in the period',
+  boards: 'on boards',
+}
+
 export function OverviewPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const period = parsePeriod(searchParams)
+  const scope = parseScope(searchParams)
   const range = resolvePeriod(period, localToday())
-  const report = useOverview(range)
+  // All is the server's default, so it isn't sent.
+  const report = useOverview(scope === DEFAULT_SCOPE ? range : { ...range, scope })
   const rangeError = report.isError ? rangeErrorMessage(report.error) : null
 
   return (
@@ -42,14 +55,22 @@ export function OverviewPage() {
         period={period}
         range={range}
         error={rangeError}
-        onChange={(next) => setSearchParams(toPeriodSearchParams(next))}
+        onChange={(next) => setSearchParams(withScope(toPeriodSearchParams(next), scope))}
+        scope={scope}
+        onScopeChange={(next) => setSearchParams(withScope(toPeriodSearchParams(period), next))}
       />
-      <OverviewContent query={report} badRange={rangeError !== null} />
+      <OverviewContent query={report} scope={scope} badRange={rangeError !== null} />
     </>
   )
 }
 
-function OverviewContent({ query, badRange }: { query: ReturnType<typeof useOverview>; badRange: boolean }) {
+interface OverviewContentProps {
+  query: ReturnType<typeof useOverview>
+  scope: ReportScope
+  badRange: boolean
+}
+
+function OverviewContent({ query, scope, badRange }: OverviewContentProps) {
   if (query.isPending) return <OverviewSkeleton />
 
   if (query.isError) {
@@ -61,46 +82,92 @@ function OverviewContent({ query, badRange }: { query: ReturnType<typeof useOver
 
   const report = query.data
   const { totals } = report
-  if (totals.programs === 0 && totals.tasksCreated === 0 && totals.tasksCompleted === 0) {
-    return (
-      <EmptyState
-        title="Nothing to report for this period"
-        description="No program ran, and no task was created or completed, in these dates."
-        action={
-          <Button asChild variant="outline">
-            <Link to={paths.programs}>Go to Programs</Link>
-          </Button>
-        }
-      />
-    )
+  // Program-only sections are 0 / empty under Show: Boards (contract), so they're left out; the Board report is
+  // empty under Show: Programs.
+  const showPrograms = scope !== 'boards'
+  const showBoards = scope !== 'programs'
+
+  // Boards never close, so a board with tasks is in every period, as a running program is.
+  if (totals.programs === 0 && report.boards.length === 0 && totals.tasksCreated === 0 && totals.tasksCompleted === 0) {
+    return <NothingToReport scope={scope} />
   }
+
+  const taskStatus = (
+    <StatusBreakdown
+      title="Tasks by status"
+      description="Current status of the tasks that were live in the period."
+      items={taskStatusItems(report.tasksByStatus)}
+      emptyText="No task was live in this period."
+    />
+  )
+  const priorities = <PriorityBars counts={report.openTasksByPriority} openTasks={totals.openTasks} where={OPEN_TASKS_WHERE[scope]} />
+  const trend = <TrendChart trend={report.trend} granularity={report.period.granularity} totals={totals} where={SCOPE_TASKS_WHERE[scope]} />
 
   // While the next period loads, the last report stays in place, dimmed: no skeleton flash, no layout jump.
   const busy = query.isPlaceholderData
   return (
     <div aria-busy={busy} className={cn('flex flex-col gap-6 transition-opacity', busy && 'opacity-60')}>
-      <StatTiles report={report} />
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <StatusBreakdown
-          title="Programs by status"
-          description={`Current status of the ${plural(totals.programs, 'program')} that ran in the period.`}
-          items={programStatusItems(report.programsByStatus)}
-          emptyText="No program ran in this period."
-        />
-        <StatusBreakdown
-          title="Tasks by status"
-          description="Current status of the tasks that were live in the period."
-          items={taskStatusItems(report.tasksByStatus)}
-          emptyText="No task was live in this period."
-        />
-      </div>
-      <TrendChart trend={report.trend} granularity={report.period.granularity} totals={totals} />
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <TeamReport teams={report.teams} />
-        <PriorityBars counts={report.openTasksByPriority} openTasks={totals.openTasks} />
-      </div>
-      <ProgramReportTable programs={report.programs} />
+      <StatTiles report={report} showPrograms={showPrograms} />
+      {showPrograms ? (
+        <>
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            <StatusBreakdown
+              title="Programs by status"
+              description={`Current status of the ${plural(totals.programs, 'program')} that ran in the period.`}
+              items={programStatusItems(report.programsByStatus)}
+              emptyText="No program ran in this period."
+            />
+            {taskStatus}
+          </div>
+          {trend}
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            <TeamReport teams={report.teams} programTasksOnly={showBoards} />
+            {priorities}
+          </div>
+          <ProgramReportTable programs={report.programs} />
+        </>
+      ) : (
+        <>
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            {taskStatus}
+            {priorities}
+          </div>
+          {trend}
+        </>
+      )}
+      {showBoards && <BoardReportTable boards={report.boards} />}
     </div>
+  )
+}
+
+function NothingToReport({ scope }: { scope: ReportScope }) {
+  if (scope === 'boards') {
+    return (
+      <EmptyState
+        title="Nothing to report for this period"
+        description="No board has tasks, and no board task was created or completed, in these dates."
+        action={
+          <Button asChild variant="outline">
+            <Link to={paths.boards}>Go to Boards</Link>
+          </Button>
+        }
+      />
+    )
+  }
+  return (
+    <EmptyState
+      title="Nothing to report for this period"
+      description={
+        scope === 'programs'
+          ? 'No program ran, and no task was created or completed, in these dates.'
+          : 'No program ran, no board has tasks, and no task was created or completed, in these dates.'
+      }
+      action={
+        <Button asChild variant="outline">
+          <Link to={paths.programs}>Go to Programs</Link>
+        </Button>
+      }
+    />
   )
 }
 

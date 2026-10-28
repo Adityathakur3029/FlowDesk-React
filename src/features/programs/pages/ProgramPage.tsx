@@ -23,7 +23,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProgramComments } from '@/features/comments'
-import { ProgramTasks } from '@/features/tasks'
+import { TaskListSection } from '@/features/tasks'
 import { useTeamDirectory } from '@/features/teams'
 import { useInlineEdit } from '@/hooks/useInlineEdit'
 import { formatCalendarDate } from '@/lib/dates'
@@ -177,7 +177,7 @@ function ProgramView({ program }: { program: Program }) {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="tasks" className="pt-2">
-              <ProgramTasks programId={program.id} programName={program.name} />
+              <TaskListSection parent={{ type: 'PROGRAM', id: program.id }} parentName={program.name} headingHidden />
             </TabsContent>
             <TabsContent value="comments" className="pt-2">
               <ProgramComments programId={program.id} />

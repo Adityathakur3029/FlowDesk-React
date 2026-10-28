@@ -75,7 +75,7 @@ export function TaskTable({ tasks, busy = false }: TaskTableProps) {
                   </TableCell>
                   <TableCell className="min-w-64 whitespace-normal">
                     <div className="flex flex-col gap-1">
-                      <Link to={taskPath(task.programId, task.key)} className="font-medium underline-offset-4 hover:underline">
+                      <Link to={taskPath(task.key)} className="font-medium underline-offset-4 hover:underline">
                         {task.title}
                       </Link>
                       <TaskLabels labels={task.labels} />

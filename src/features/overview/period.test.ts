@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isCalendarDate, localToday, parsePeriod, resolvePeriod, toPeriodSearchParams } from './period'
+import { parsePeriod, resolvePeriod, toPeriodSearchParams } from './period'
 
 const parse = (query: string) => parsePeriod(new URLSearchParams(query))
 
@@ -48,19 +48,5 @@ describe('parsePeriod', () => {
     expect(toPeriodSearchParams({ preset: '1m' }).toString()).toBe('period=1m')
     const custom = parse('period=custom&from=2026-01-01&to=2026-03-31')
     expect(toPeriodSearchParams(custom).toString()).toBe('period=custom&from=2026-01-01&to=2026-03-31')
-  })
-})
-
-describe('dates', () => {
-  it('checks real calendar dates', () => {
-    expect(isCalendarDate('2028-02-29')).toBe(true)
-    expect(isCalendarDate('2026-02-29')).toBe(false)
-    expect(isCalendarDate('2026-13-01')).toBe(false)
-    expect(isCalendarDate(null)).toBe(false)
-  })
-
-  it("uses the browser's own calendar date for today", () => {
-    expect(localToday(new Date(2026, 9, 20, 23, 59))).toBe('2026-10-20')
-    expect(localToday(new Date(2026, 0, 1, 0, 1))).toBe('2026-01-01')
   })
 })

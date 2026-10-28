@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { hasTaskFilters, type TaskSearch } from '../searchParams'
+import { CREATED_FILTERS, hasTaskFilters, type CreatedFilter, type TaskSearch } from '../searchParams'
 import { TASK_STATUSES, TASK_STATUS_LABELS, TASK_STATUS_TONES } from '../taskDisplay'
 import type { TaskStatus } from '../types'
 
 const ALL = 'ALL'
+const ALL_TIME = 'ALL_TIME'
 const SEARCH_DEBOUNCE_MS = 300
 const MAX_QUERY_LENGTH = 100 // GET …/tasks `q` is 1-100 characters
 
@@ -45,7 +46,7 @@ export function TaskFilters({ search, onChange }: TaskFiltersProps) {
   function clearFilters() {
     clearTimeout(timer.current)
     setText('')
-    onChange({ q: undefined, status: undefined })
+    onChange({ q: undefined, status: undefined, created: undefined })
   }
 
   return (
@@ -82,6 +83,26 @@ export function TaskFilters({ search, onChange }: TaskFiltersProps) {
               <SelectItem key={status} value={status}>
                 <ToneDot tone={TASK_STATUS_TONES[status]} />
                 {TASK_STATUS_LABELS[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Label htmlFor="task-created-filter">Created</Label>
+        <Select
+          value={search.created ?? ALL_TIME}
+          onValueChange={(value) => onChange({ created: value === ALL_TIME ? undefined : (value as CreatedFilter) })}
+        >
+          <SelectTrigger id="task-created-filter" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_TIME}>All time</SelectItem>
+            {CREATED_FILTERS.map((filter) => (
+              <SelectItem key={filter.value} value={filter.value}>
+                {filter.label}
               </SelectItem>
             ))}
           </SelectContent>

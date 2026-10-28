@@ -24,7 +24,7 @@ interface TaskStatusMenuProps {
 // Every role may change it (contract). DEPENDENT is never offered: the server sets it while a blocker is
 // open, and answers 409 TASK_BLOCKED to any change until then.
 export function TaskStatusMenu({ task, taskRef }: TaskStatusMenuProps) {
-  const update = useUpdateTask(task.programId, taskRef)
+  const update = useUpdateTask(taskRef)
   // Shows the picked status while it saves; a failed save falls back to the stored one.
   const status = update.isPending ? (update.variables.status ?? task.status) : task.status
   const label = TASK_STATUS_LABELS[status]

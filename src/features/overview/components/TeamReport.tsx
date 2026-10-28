@@ -5,8 +5,9 @@ import { plural } from '../format'
 import type { TeamReportRow } from '../types'
 import { HBar } from './HBar'
 
-// Rows in the server's order: by name, the no-team row last.
-export function TeamReport({ teams }: { teams: readonly TeamReportRow[] }) {
+// Rows in the server's order: by name, the no-team row last. Rolled up by program owner team, so board tasks
+// are never in it (boards have no owner team).
+export function TeamReport({ teams, programTasksOnly = false }: { teams: readonly TeamReportRow[]; programTasksOnly?: boolean }) {
   const most = Math.max(0, ...teams.map((team) => team.tasksCompleted))
 
   return (
@@ -15,7 +16,10 @@ export function TeamReport({ teams }: { teams: readonly TeamReportRow[] }) {
         <CardTitle>
           <h2>By team</h2>
         </CardTitle>
-        <CardDescription>Tasks completed in the period, by the team that owns the program.</CardDescription>
+        <CardDescription>
+          Tasks completed in the period, by the team that owns the program.
+          {programTasksOnly && ' Program tasks only: boards have no owner team.'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {teams.length === 0 ? (

@@ -1,7 +1,8 @@
 // Public entry of the tasks feature: other features import from here only.
-// No pages here: TaskPage imports @/features/programs, whose ProgramPage imports this file, so exporting it
-// (or anything else that imports @/features/programs) would create an import cycle.
-export { ProgramTasks } from './components/ProgramTasks'
+// No pages here: the program and board pages import this file, and the router imports TaskPage by path. Keep
+// it free of anything that imports @/features/programs or @/features/boards, so no import cycle can form.
+export { taskKeys } from './api'
+export { TaskListSection } from './components/TaskListSection'
 export {
   TASK_PRIORITIES,
   TASK_PRIORITY_ICONS,

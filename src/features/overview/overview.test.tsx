@@ -118,6 +118,32 @@ const report: OverviewReport = {
       atRisk: false,
     },
   ],
+  boards: [],
+}
+
+// Board rows (spec 15), in the server's order: most overdue first.
+const boardRows: OverviewReport['boards'] = [
+  {
+    id: '8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f',
+    key: 'PRO',
+    name: 'Product feedback',
+    tasksTotal: 12,
+    tasksDone: 5,
+    tasksCompletedInPeriod: 4,
+    openTasks: 7,
+    overdueTasks: 2,
+  },
+  { id: '6b5a4c3d-2e1f-4a0b-9c8d-7e6f5a4b3c2d', key: 'OPSW', name: 'Ops weekly', tasksTotal: 3, tasksDone: 3, tasksCompletedInPeriod: 1, openTasks: 0, overdueTasks: 0 },
+]
+
+// Show: Boards. Program-only numbers are 0 / empty under scope=boards (contract); the shape doesn't change.
+const boardsReport: OverviewReport = {
+  ...report,
+  totals: { ...report.totals, programs: 0, programsCompleted: 0, programsAtRisk: 0, openTasks: 7, overdueTasks: 2 },
+  programsByStatus: { PLANNED: 0, ACTIVE: 0, ON_HOLD: 0, COMPLETED: 0, CANCELLED: 0 },
+  teams: [],
+  programs: [],
+  boards: boardRows,
 }
 
 const emptyReport: OverviewReport = {
@@ -129,6 +155,7 @@ const emptyReport: OverviewReport = {
   trend: report.trend.map((bucket) => ({ ...bucket, created: 0, completed: 0 })),
   teams: [],
   programs: [],
+  boards: [],
 }
 
 // GET /reports/overview: records each query string and answers with `respond`.
@@ -168,7 +195,7 @@ describe('OverviewPage', () => {
     mockOverview()
     await openOverview()
     const nav = screen.getByRole('navigation', { name: 'Main' })
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Programs', 'Overview', 'People', 'Teams'])
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Programs', 'Boards', 'Overview', 'People', 'Teams'])
     expect(within(nav).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -329,5 +356,76 @@ describe('OverviewPage', () => {
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Programs running', { selector: 'dt' })).toBeInTheDocument()
+  })
+})
+
+describe('OverviewPage scope (spec 15)', () => {
+  const heading = (name: string) => screen.queryByRole('heading', { level: 2, name })
+
+  it('shows boards only under Show: Boards, keeping the period', async () => {
+    const queries = mockOverview((url) => (url.searchParams.get('scope') === 'boards' ? boardsReport : report))
+    await openOverview('/overview?period=1m')
+    await screen.findByText('Programs running', { selector: 'dt' })
+    expect(screen.getByRole('combobox', { name: 'Show' })).toHaveTextContent('All')
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Show' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Boards' }))
+
+    await waitFor(() => expect(queries.at(-1)).toBe('from=2026-09-21&to=2026-10-20&scope=boards'))
+    expect(currentUrl()).toBe('/overview?period=1m&scope=boards')
+    await waitFor(() => expect(screen.queryByText('Programs running', { selector: 'dt' })).not.toBeInTheDocument())
+
+    expect(screen.queryByText('Programs completed', { selector: 'dt' })).not.toBeInTheDocument()
+    expect(tile('Overdue now')).toHaveTextContent('27 open')
+    expect(tile('Overdue now')).not.toHaveTextContent('at risk')
+    expect(screen.queryByRole('list', { name: 'Programs by status' })).not.toBeInTheDocument()
+    expect(heading('By team')).not.toBeInTheDocument()
+    expect(heading('Programs')).not.toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Tasks by status' })).toBeInTheDocument()
+    expect(screen.getByText('Per week, across all boards. Dates are in UTC.')).toBeInTheDocument()
+
+    expect(heading('Boards')).toBeInTheDocument()
+    const rows = within(screen.getByRole('table', { name: 'Boards with tasks' })).getAllByRole('row').slice(1)
+    expect(rows.map((row) => row.textContent)).toEqual(['PRO Product feedback5/125 of 12 tasks done472', 'OPSW Ops weekly3/33 of 3 tasks done100'])
+    expect(within(rows[0]).getByRole('link', { name: 'PRO Product feedback' })).toHaveAttribute('href', '/boards/8c7d6e5f-4a3b-4c2d-9e1f-0a9b8c7d6e5f')
+  })
+
+  it('reads ?scope=programs and leaves the Board report out', async () => {
+    const queries = mockOverview()
+    await openOverview('/overview?scope=programs')
+    await screen.findByText('Programs running', { selector: 'dt' })
+
+    expect(queries).toEqual(['from=2025-10-21&to=2026-10-20&scope=programs'])
+    expect(screen.getByRole('combobox', { name: 'Show' })).toHaveTextContent('Programs')
+    expect(heading('Programs')).toBeInTheDocument()
+    expect(heading('Boards')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Program tasks only/)).not.toBeInTheDocument()
+  })
+
+  it('shows both reports under All, and says By team counts program tasks only', async () => {
+    const queries = mockOverview(() => ({ ...report, boards: boardRows }))
+    await openOverview()
+    await screen.findByText('Programs running', { selector: 'dt' })
+
+    expect(queries).toEqual(['from=2025-10-21&to=2026-10-20'])
+    expect(heading('Programs')).toBeInTheDocument()
+    expect(heading('Boards')).toBeInTheDocument()
+    expect(screen.getByText(/Program tasks only: boards have no owner team\./)).toBeInTheDocument()
+    expect(screen.getByText('Per week, across programs and boards. Dates are in UTC.')).toBeInTheDocument()
+  })
+
+  it('ignores an unknown scope', async () => {
+    const queries = mockOverview()
+    await openOverview('/overview?scope=tasks')
+    await screen.findByText('Programs running', { selector: 'dt' })
+    expect(queries).toEqual(['from=2025-10-21&to=2026-10-20'])
+  })
+
+  it('says when there is nothing to report on boards', async () => {
+    mockOverview(() => emptyReport)
+    await openOverview('/overview?scope=boards')
+
+    expect(await screen.findByText('Nothing to report for this period')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Go to Boards' })).toHaveAttribute('href', '/boards')
   })
 })

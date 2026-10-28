@@ -6,25 +6,20 @@ import type { Comment, CommentList, CommentTarget, CreateCommentRequest } from '
 export const commentKeys = {
   all: ['comments'] as const,
   program: (programId: string) => [...commentKeys.all, 'program', programId] as const,
-  task: (programId: string, taskId: string) => [...commentKeys.all, 'task', programId, taskId] as const,
-  target: ({ programId, taskId }: CommentTarget) =>
-    taskId === undefined ? commentKeys.program(programId) : commentKeys.task(programId, taskId),
+  task: (taskId: string) => [...commentKeys.all, 'task', taskId] as const,
+  target: (target: CommentTarget) => ('taskId' in target ? commentKeys.task(target.taskId) : commentKeys.program(target.programId)),
 }
 
 export const COMMENT_PAGE_SIZE = 20
 
 type CommentPageQuery = { order: 'desc'; limit: number; offset: number }
 
-// GET /programs/{programId}/comments or GET /programs/{programId}/tasks/{taskRef}/comments.
-function fetchComments({ programId, taskId }: CommentTarget, query: CommentPageQuery, signal: AbortSignal) {
-  return taskId === undefined
-    ? unwrap(apiClient.GET('/programs/{programId}/comments', { params: { path: { programId }, query }, signal }))
-    : unwrap(
-        apiClient.GET('/programs/{programId}/tasks/{taskRef}/comments', {
-          params: { path: { programId, taskRef: taskId }, query },
-          signal,
-        }),
-      )
+// GET /programs/{programId}/comments or GET /tasks/{taskRef}/comments. A task's comments are addressed by the
+// task alone, so board tasks work the same as program tasks.
+function fetchComments(target: CommentTarget, query: CommentPageQuery, signal: AbortSignal) {
+  return 'taskId' in target
+    ? unwrap(apiClient.GET('/tasks/{taskRef}/comments', { params: { path: { taskRef: target.taskId }, query }, signal }))
+    : unwrap(apiClient.GET('/programs/{programId}/comments', { params: { path: { programId: target.programId }, query }, signal }))
 }
 
 // The target's threads, newest first, each with every active reply (oldest first). limit/offset page
@@ -46,18 +41,12 @@ export function useComments(target: CommentTarget) {
 export function useCreateComment(target: CommentTarget) {
   const queryClient = useQueryClient()
   const refetch = () => queryClient.invalidateQueries({ queryKey: commentKeys.target(target) })
-  const { programId, taskId } = target
   return useMutation<Comment, ApiError, CreateCommentRequest>({
     mutationFn: async (body) =>
       (
-        await (taskId === undefined
-          ? unwrap(apiClient.POST('/programs/{programId}/comments', { params: { path: { programId } }, body }))
-          : unwrap(
-              apiClient.POST('/programs/{programId}/tasks/{taskRef}/comments', {
-                params: { path: { programId, taskRef: taskId } },
-                body,
-              }),
-            ))
+        await ('taskId' in target
+          ? unwrap(apiClient.POST('/tasks/{taskRef}/comments', { params: { path: { taskRef: target.taskId } }, body }))
+          : unwrap(apiClient.POST('/programs/{programId}/comments', { params: { path: { programId: target.programId } }, body })))
       ).data,
     onSuccess: refetch,
     onError: (error) => {
@@ -67,22 +56,34 @@ export function useCreateComment(target: CommentTarget) {
   })
 }
 
-// Program and task comments alike are addressed by program and id.
 interface UpdateCommentVariables {
   commentId: string
   body: string
 }
 
-// PATCH /programs/{programId}/comments/{commentId}: the author only (403 for anyone else, ADMIN included).
-// It stays pending until the list has refetched, so the form never closes onto the old text.
+// PATCH /programs/{programId}/comments/{commentId} or PATCH /tasks/{taskRef}/comments/{commentId}: the author
+// only (403 for anyone else, ADMIN included). It stays pending until the list has refetched, so the form never
+// closes onto the old text.
 export function useUpdateComment(target: CommentTarget) {
   const queryClient = useQueryClient()
   const refetch = () => queryClient.invalidateQueries({ queryKey: commentKeys.target(target) })
-  const { programId } = target
   return useMutation<Comment, ApiError, UpdateCommentVariables>({
     mutationFn: async ({ commentId, body }) =>
-      (await unwrap(apiClient.PATCH('/programs/{programId}/comments/{commentId}', { params: { path: { programId, commentId } }, body: { body } })))
-        .data,
+      (
+        await ('taskId' in target
+          ? unwrap(
+              apiClient.PATCH('/tasks/{taskRef}/comments/{commentId}', {
+                params: { path: { taskRef: target.taskId, commentId } },
+                body: { body },
+              }),
+            )
+          : unwrap(
+              apiClient.PATCH('/programs/{programId}/comments/{commentId}', {
+                params: { path: { programId: target.programId, commentId } },
+                body: { body },
+              }),
+            ))
+      ).data,
     onSuccess: refetch,
     onError: (error) => {
       // Deleted meanwhile: the refetch takes it off the list.
@@ -91,16 +92,19 @@ export function useUpdateComment(target: CommentTarget) {
   })
 }
 
-// DELETE /programs/{programId}/comments/{commentId}: ADMIN, MANAGER or the author (403 for another MEMBER).
-// A top-level comment with active replies stays as a tombstone. Pending until the list has refetched, which
-// removes the comment (and the dialog with it).
+// DELETE /programs/{programId}/comments/{commentId} or DELETE /tasks/{taskRef}/comments/{commentId}: ADMIN,
+// MANAGER or the author (403 for another MEMBER). A top-level comment with active replies stays as a tombstone.
+// Pending until the list has refetched, which removes the comment (and the dialog with it).
 export function useDeleteComment(target: CommentTarget) {
   const queryClient = useQueryClient()
   const refetch = () => queryClient.invalidateQueries({ queryKey: commentKeys.target(target) })
-  const { programId } = target
   return useMutation<void, ApiError, string>({
     mutationFn: async (commentId) => {
-      await unwrap(apiClient.DELETE('/programs/{programId}/comments/{commentId}', { params: { path: { programId, commentId } } }))
+      await ('taskId' in target
+        ? unwrap(apiClient.DELETE('/tasks/{taskRef}/comments/{commentId}', { params: { path: { taskRef: target.taskId, commentId } } }))
+        : unwrap(
+            apiClient.DELETE('/programs/{programId}/comments/{commentId}', { params: { path: { programId: target.programId, commentId } } }),
+          ))
     },
     onSuccess: refetch,
     onError: (error) => {

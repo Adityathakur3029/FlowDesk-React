@@ -54,7 +54,7 @@ interface TaskOptionMenuProps {
 // The type or priority in Details as a menu: picking one saves it right away, like the status.
 export function TaskOptionMenu({ task, taskRef, field }: TaskOptionMenuProps) {
   const config = FIELDS[field]
-  const update = useUpdateTask(task.programId, taskRef)
+  const update = useUpdateTask(taskRef)
   // Shows the picked value while it saves; a failed save falls back to the stored one.
   const value = (update.isPending ? update.variables[field] : undefined) ?? task[field]
 

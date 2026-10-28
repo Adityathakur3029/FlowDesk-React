@@ -28,7 +28,7 @@ import { applyServerErrors } from '@/lib/formErrors'
 import { useCreateTask } from '../api'
 import { CREATABLE_TASK_STATUSES, TASK_PRIORITIES, TASK_STATUS_LABELS, TASK_STATUS_TONES, TASK_TYPES } from '../taskDisplay'
 import { hoursToMinutes, parseLabels, taskFieldAliases, taskFields, taskSchema, type TaskFormValues } from '../taskSchema'
-import type { CreateTaskRequest } from '../types'
+import type { CreateTaskRequest, TaskParentRef } from '../types'
 import { TaskPriorityLabel } from './TaskPriorityLabel'
 import { TaskTypeLabel } from './TaskTypeLabel'
 
@@ -47,18 +47,19 @@ const DEFAULT_VALUES: TaskFormValues = {
 }
 
 interface CreateTaskDialogProps {
-  programId: string
-  programName: string
+  parent: TaskParentRef
+  // The program's or board's name, in the dialog's description.
+  parentName: string
   // Called after the task is created, e.g. to show the first page, where the newest task is.
   onCreated?: () => void
 }
 
 // Any active employee can create a task (contract), so this isn't role-gated.
-export function CreateTaskDialog({ programId, programName, onCreated }: CreateTaskDialogProps) {
+export function CreateTaskDialog({ parent, parentName, onCreated }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false)
   const [formErrors, setFormErrors] = useState<string[]>([])
   const { employee } = useAuth()
-  const createTask = useCreateTask(programId)
+  const createTask = useCreateTask(parent)
   const form = useForm<TaskFormValues>({ resolver: zodResolver(taskSchema), defaultValues: DEFAULT_VALUES })
   const [assignee, labelsText] = useWatch({ control: form.control, name: ['assignee', 'labels'] })
   const labels = parseLabels(labelsText)
@@ -148,7 +149,7 @@ export function CreateTaskDialog({ programId, programName, onCreated }: CreateTa
       >
         <DialogHeader>
           <DialogTitle>Create a task</DialogTitle>
-          <DialogDescription>Adds a task to {programName}. You'll be its reporter.</DialogDescription>
+          <DialogDescription>Adds a task to {parentName}. You'll be its reporter.</DialogDescription>
         </DialogHeader>
 
         <DialogBody>

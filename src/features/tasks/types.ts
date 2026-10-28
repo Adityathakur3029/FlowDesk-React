@@ -7,6 +7,11 @@ export type TaskStatus = components['schemas']['TaskStatus']
 export type TaskType = components['schemas']['TaskType']
 export type TaskPriority = components['schemas']['TaskPriority']
 export type TaskList = components['schemas']['TaskListResponse']
+// The program or board a task is in. Every task has exactly one, fixed at creation.
+export type TaskParent = components['schemas']['TaskParent']
+// Enough of a parent to list or create its tasks: the program page and the board page know only this much.
+export type TaskParentRef = Pick<TaskParent, 'type' | 'id'>
+// The program and board task lists take the same filters.
 export type TaskListParams = NonNullable<paths['/programs/{programId}/tasks']['get']['parameters']['query']>
 export type CreateTaskRequest = components['schemas']['CreateTaskRequest']
 export type UpdateTaskRequest = components['schemas']['UpdateTaskRequest']
